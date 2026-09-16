@@ -40,6 +40,9 @@ export type SourceOption = {
 export type JiraPresetId = 'assigned' | 'reported' | 'all' | 'done'
 export type JiraPreset = { id: JiraPresetId; label: string }
 
+export type MantisBTPresetId = 'assigned' | 'reported' | 'all'
+export type MantisBTPreset = { id: MantisBTPresetId; label: string }
+
 export type GitHubModeButton = { id: GitHubTaskKind | 'project'; label: string }
 
 export type LinearMode = 'issues' | 'projects' | 'views' | 'in-orca'
@@ -136,12 +139,7 @@ export const getSourceOptions = createLocalizedCatalog((): SourceOption[] => [
   {
     id: 'mantisBT',
     label: translate('auto.components.TaskPage.mantisbtSourceLabel', 'MantisBT'),
-    Icon: ({ className }) => <MantisBTIcon className={className} />,
-    // Why: MantisBT is connectable from Settings but issue browsing here is a
-    // separate follow-up (see task-page/mantisbt/Content.tsx) — shown, not
-    // hidden, so the tab honestly reflects "connected, not browsable yet"
-    // instead of just disappearing.
-    disabled: true
+    Icon: ({ className }) => <MantisBTIcon className={className} />
   }
 ])
 
@@ -150,6 +148,12 @@ export const getJiraPresets = createLocalizedCatalog((): JiraPreset[] => [
   { id: 'reported', label: translate('auto.components.TaskPage.bd9965df51', 'Reported') },
   { id: 'all', label: translate('auto.components.TaskPage.4b6e40e42c', 'All Open') },
   { id: 'done', label: translate('auto.components.TaskPage.18451e99df', 'Done') }
+])
+
+export const getMantisBTPresets = createLocalizedCatalog((): MantisBTPreset[] => [
+  { id: 'assigned', label: translate('auto.components.TaskPage.1301d376f1', 'Assigned') },
+  { id: 'reported', label: translate('auto.components.TaskPage.bd9965df51', 'Reported') },
+  { id: 'all', label: translate('auto.components.TaskPage.4b6e40e42c', 'All Open') }
 ])
 
 export const getGitHubModeButtons = createLocalizedCatalog((): GitHubModeButton[] => [

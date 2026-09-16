@@ -1,6 +1,9 @@
 import type {
   MantisBTConnectArgs,
   MantisBTConnectionStatus,
+  MantisBTIssue,
+  MantisBTIssueFilter,
+  MantisBTProject,
   MantisBTSiteSelection,
   MantisBTViewer
 } from '../../../shared/mantisbt-types'
@@ -79,4 +82,47 @@ export async function mantisBTTestConnection(
         { timeoutMs: 30_000 }
       )
     : window.api.mantisBT.testConnection(siteId ? { siteId } : undefined)
+}
+
+export async function mantisBTListIssues(
+  settings: RuntimeMantisBTSettings,
+  filter?: MantisBTIssueFilter,
+  limit?: number,
+  siteId?: MantisBTSiteSelection | null
+): Promise<MantisBTIssue[]> {
+  const target = getMantisBTRuntimeTarget(settings)
+  const args = { filter, limit, siteId: siteId ?? undefined }
+  // Why: fetchAllIssuePages has no server-side handler_id/reporter_id filter
+  // to narrow the request, so a large self-hosted instance can take minutes
+  // — matches ISSUE_SEARCH_TIMEOUT_MS in src/main/mantisbt/mantisbt-issue-search.ts.
+  return target.kind === 'environment'
+    ? callRuntimeRpc<MantisBTIssue[]>(target, 'mantisBT.listIssues', args, { timeoutMs: 300_000 })
+    : window.api.mantisBT.listIssues(args)
+}
+
+export async function mantisBTGetIssue(
+  settings: RuntimeMantisBTSettings,
+  id: string,
+  siteId?: string | null
+): Promise<MantisBTIssue | null> {
+  const target = getMantisBTRuntimeTarget(settings)
+  const args = { id, siteId: siteId ?? undefined }
+  return target.kind === 'environment'
+    ? callRuntimeRpc<MantisBTIssue | null>(target, 'mantisBT.getIssue', args, { timeoutMs: 30_000 })
+    : window.api.mantisBT.getIssue(args)
+}
+
+export async function mantisBTListProjects(
+  settings: RuntimeMantisBTSettings,
+  siteId?: MantisBTSiteSelection | null
+): Promise<MantisBTProject[]> {
+  const target = getMantisBTRuntimeTarget(settings)
+  return target.kind === 'environment'
+    ? callRuntimeRpc<MantisBTProject[]>(
+        target,
+        'mantisBT.listProjects',
+        siteId ? { siteId } : undefined,
+        { timeoutMs: 30_000 }
+      )
+    : window.api.mantisBT.listProjects(siteId ? { siteId } : undefined)
 }

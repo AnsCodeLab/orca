@@ -2271,10 +2271,24 @@
         "linearEmptyHasWorktree": "No Linear tickets are linked to an Orca workspace yet. Start work from a Linear issue to see it here.",
         "linearOpenAttachedWorkspace": "Open workspace attached to {{value0}}",
         "linearWorktreesColumn": "Workspaces",
-        "mantisbtBrowsingUnsupportedTitle": "MantisBT browsing is not available yet",
-        "mantisbtBrowsingUnsupportedBody": "MantisBT can be connected from Settings, but browsing its issues here is not supported yet. Hide it to use another task source.",
         "mantisbtHideSource": "Hide MantisBT",
-        "mantisbtSourceLabel": "MantisBT"
+        "mantisbtSourceLabel": "MantisBT",
+        "mantisbtSwitchSiteFailed": "Failed to switch MantisBT site.",
+        "mantisbtAllSites": "All MantisBT sites",
+        "mantisbtConnectTitle": "Connect your MantisBT site",
+        "mantisbtConnectBody": "Browse issues and start work from them directly here.",
+        "mantisbtConnectCta": "Connect MantisBT",
+        "mantisbtIssuesHeader": "MantisBT issues",
+        "mantisbtNoIssues": "No MantisBT issues found",
+        "mantisbtNoIssuesSearch": "Try a different filter.",
+        "mantisbtRefreshIssues": "Refresh MantisBT issues",
+        "mantisbtSearchPlaceholder": "Filter by title or description",
+        "mantisbtStartWorkspaceFrom": "Start workspace from #{{value0}}",
+        "mantisbtOpenInMantisBT": "Open #{{value0}} in MantisBT",
+        "mantisbtOpenInMantisBTShort": "Open in MantisBT",
+        "mantisbtSortHandler": "Handler",
+        "mantisbtLinkSourceUnavailable": "Couldn’t link this MantisBT issue. Reconnect MantisBT or pick the matching site, then try again.",
+        "mantisbtSlowLoadHint": "Still loading — this can take longer for MantisBT instances with many issues."
       },
       "Terminal": {
         "73768427cf": "Close",
@@ -16995,6 +17009,21 @@
             "connect": "Connect"
           }
         }
+      },
+      "MantisBTIssueWorkspace": {
+        "title": "MantisBT issue",
+        "description": "Preview the selected issue and start work from it.",
+        "startWorkspace": "Start workspace",
+        "close": "Close MantisBT issue preview",
+        "closeShort": "Close",
+        "noDescription": "No description provided.",
+        "copied": "{{value0}} copied",
+        "copyFailed": "Failed to copy {{value0}}",
+        "openInMantisBT": "Open in MantisBT",
+        "copyUrl": "Copy URL",
+        "copyId": "Copy id",
+        "copyBranchName": "Copy suggested branch name",
+        "copyPrompt": "Copy prompt"
       }
     },
     "i18n": {
