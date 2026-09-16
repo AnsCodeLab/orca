@@ -340,6 +340,13 @@ import {
   WorkspaceSelection
 } from './linear-params'
 import { CreateProject } from './linear-project-create-params'
+import {
+  Connect as ConnectOfMantisParams,
+  IssueId as IssueIdOfMantisParams,
+  ListIssues as ListIssuesOfMantisParams,
+  SelectSite as SelectSiteOfMantisParams,
+  SiteSelection as SiteSelectionOfMantisParams
+} from './mantis-params'
 import { NativeChatSession, NativeChatUnsubscribe } from './native-chat-params'
 import {
   NotificationGetMissedSinceParams,
@@ -942,6 +949,14 @@ export const RPC_PARAMS_BY_METHOD = {
   'linear.teamStates': TeamId,
   'linear.testConnection': WorkspaceSelection,
   'linear.updateIssue': IssueUpdateOfLinearParams,
+  'mantis.connect': ConnectOfMantisParams,
+  'mantis.disconnect': SiteSelectionOfMantisParams,
+  'mantis.getIssue': IssueIdOfMantisParams,
+  'mantis.listIssues': ListIssuesOfMantisParams,
+  'mantis.listProjects': SiteSelectionOfMantisParams,
+  'mantis.selectSite': SelectSiteOfMantisParams,
+  'mantis.status': null,
+  'mantis.testConnection': SiteSelectionOfMantisParams,
   'markdown.readTab': ActivateTab,
   'markdown.saveTab': SaveMarkdownTab,
   'nativeChat.readSession': NativeChatSession,
