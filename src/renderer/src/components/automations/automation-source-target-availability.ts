@@ -1,6 +1,9 @@
 import type { TaskSourceContext } from '../../../../shared/task-source-context'
 import type { TaskSourceHostAvailability } from '../task-source-context-summary'
-import { unavailable, type AutomationTargetAvailability } from './automation-target-availability'
+import {
+  unavailable,
+  type AutomationTargetAvailability
+} from './automation-target-availability-types'
 
 function getAutomationSourceProviderLabel(provider: TaskSourceContext['provider']): string {
   switch (provider) {

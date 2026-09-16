@@ -16,34 +16,12 @@ import type { Repo } from '../../../../shared/repo-types'
 import type { Worktree } from '../../../../shared/worktree/types'
 import type { TaskSourceHostAvailability } from '../task-source-context-summary'
 import { getAutomationSourceAvailability } from './automation-source-target-availability'
+import {
+  unavailable,
+  type AutomationTargetAvailability
+} from './automation-target-availability-types'
 
-export type AutomationTargetAvailability =
-  | {
-      canRunNow: true
-      reason: 'available'
-      message: null
-    }
-  | {
-      canRunNow: false
-      reason:
-        | 'missing-project'
-        | 'missing-project-host-setup'
-        | 'project-host-setup-not-ready'
-        | 'missing-workspace'
-        | 'host-mismatch'
-        | 'unsupported-host'
-        | 'runtime-checking'
-        | 'runtime-unavailable'
-        | 'runtime-update-required'
-        | 'ssh-auth-needed'
-        | 'ssh-unavailable'
-        | 'ssh-connecting'
-        | 'source-auth-needed'
-        | 'source-tool-unavailable'
-        | 'source-provider-unsupported'
-        | 'source-host-unavailable'
-      message: string
-    }
+export type { AutomationTargetAvailability } from './automation-target-availability-types'
 
 type AutomationTargetAvailabilityArgs = {
   automation: Automation
@@ -232,11 +210,4 @@ function getAutomationSshTargetId(automation: Automation, repo: Repo): string | 
     return automation.executionTargetId
   }
   return repo.connectionId?.trim() || null
-}
-
-export function unavailable(
-  reason: Exclude<AutomationTargetAvailability['reason'], 'available'>,
-  message: string
-): AutomationTargetAvailability {
-  return { canRunNow: false, reason, message }
 }
