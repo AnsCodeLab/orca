@@ -341,12 +341,12 @@ import {
 } from './linear-params'
 import { CreateProject } from './linear-project-create-params'
 import {
-  Connect as ConnectOfMantisParams,
-  IssueId as IssueIdOfMantisParams,
-  ListIssues as ListIssuesOfMantisParams,
-  SelectSite as SelectSiteOfMantisParams,
-  SiteSelection as SiteSelectionOfMantisParams
-} from './mantis-params'
+  Connect as ConnectOfMantisbtParams,
+  IssueId as IssueIdOfMantisbtParams,
+  ListIssues as ListIssuesOfMantisbtParams,
+  SelectSite as SelectSiteOfMantisbtParams,
+  SiteSelection as SiteSelectionOfMantisbtParams
+} from './mantisbt-params'
 import { NativeChatSession, NativeChatUnsubscribe } from './native-chat-params'
 import {
   NotificationGetMissedSinceParams,
@@ -949,14 +949,14 @@ export const RPC_PARAMS_BY_METHOD = {
   'linear.teamStates': TeamId,
   'linear.testConnection': WorkspaceSelection,
   'linear.updateIssue': IssueUpdateOfLinearParams,
-  'mantis.connect': ConnectOfMantisParams,
-  'mantis.disconnect': SiteSelectionOfMantisParams,
-  'mantis.getIssue': IssueIdOfMantisParams,
-  'mantis.listIssues': ListIssuesOfMantisParams,
-  'mantis.listProjects': SiteSelectionOfMantisParams,
-  'mantis.selectSite': SelectSiteOfMantisParams,
-  'mantis.status': null,
-  'mantis.testConnection': SiteSelectionOfMantisParams,
+  'mantisBT.connect': ConnectOfMantisbtParams,
+  'mantisBT.disconnect': SiteSelectionOfMantisbtParams,
+  'mantisBT.getIssue': IssueIdOfMantisbtParams,
+  'mantisBT.listIssues': ListIssuesOfMantisbtParams,
+  'mantisBT.listProjects': SiteSelectionOfMantisbtParams,
+  'mantisBT.selectSite': SelectSiteOfMantisbtParams,
+  'mantisBT.status': null,
+  'mantisBT.testConnection': SiteSelectionOfMantisbtParams,
   'markdown.readTab': ActivateTab,
   'markdown.saveTab': SaveMarkdownTab,
   'nativeChat.readSession': NativeChatSession,

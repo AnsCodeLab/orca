@@ -543,6 +543,9 @@
               }
             }
           }
+        },
+        "mantisBT": {
+          "connectionSuperseded": "MantisBT connection was superseded by a newer request."
         }
       }
     },
@@ -8495,7 +8498,14 @@
           "integrationsHint": "Credentials for all providers also live under",
           "integrationsLink": "Integrations",
           "skillHint": ". After Linear is connected, usage examples stay under Settings → Linear.",
-          "incompleteBannerBodyWithLinear": "Hide providers you do not use, or expand a card and finish its steps. For Linear: API access, the agent skill, and Show in Tasks."
+          "incompleteBannerBodyWithLinear": "Hide providers you do not use, or expand a card and finish its steps. For Linear: API access, the agent skill, and Show in Tasks.",
+          "connectMantisBTTitle": "Connect MantisBT",
+          "connectMantisBTDescription": "Add a self-hosted MantisBT instance with an API token.",
+          "manageMantisBT": "Manage keys",
+          "addMantisBT": "Add MantisBT access",
+          "mantisBTProviderLabel": "MantisBT",
+          "mantisBTLabel": "MantisBT",
+          "mantisBTDescription": "Connect a self-hosted MantisBT instance and show it in Tasks."
         },
         "TerminalAppearanceSection": {
           "a14a427ae4": "Thickness of the pane divider line.",
@@ -10699,7 +10709,16 @@
                 "2d60ec7921": "Connect a Jira Cloud site with an API token, or a self-hosted Jira with a personal access token or username and password. Credentials are sent to the selected remote runtime and stored there with runtime-supported encryption.",
                 "977e360b71": "Connect a Jira Cloud site with an API token, or a self-hosted Jira with a personal access token or username and password. Credentials are stored locally and encrypted when local runtime storage supports it.",
                 "statusConnected": "Connected",
-                "statusNotConnected": "Not connected"
+                "statusNotConnected": "Not connected",
+                "mantisbtRemoteCredentialCopy": "Connect a self-hosted MantisBT instance with an API token. Credentials are sent to the selected remote runtime and stored there with runtime-supported encryption.",
+                "mantisbtLocalCredentialCopy": "Connect a self-hosted MantisBT instance with an API token. Credentials are stored locally and encrypted when local runtime storage supports it.",
+                "mantisbtSitesConnected": "{{value0}} site{{value1}} connected",
+                "mantisbtChecking": "Checking MantisBT access before showing setup actions.",
+                "mantisbtDescription": "Browse and start work from MantisBT issues.",
+                "mantisbtAddSite": "Add MantisBT site",
+                "mantisbtConnect": "Connect MantisBT",
+                "mantisbtOneTokenPerSite": "Each connected MantisBT site has one token stored by the active runtime.",
+                "mantisbtConnectedStale": "MantisBT is connected for this runtime. Re-check if the connected site list looks stale."
               }
             }
           }
@@ -11867,6 +11886,14 @@
           "targetDescription": "Higher values increase contrast where possible. Background colors stay unchanged.",
           "subtle": "Subtle",
           "strong": "Strong"
+        },
+        "mantisbt": {
+          "integration": {
+            "card": {
+              "statusConnected": "Connected",
+              "statusNotConnected": "Not connected"
+            }
+          }
         }
       },
       "right": {
@@ -16946,6 +16973,24 @@
         "3d8e5f1b9c": "Share skills behind an unlisted link and install them on any machine you use.",
         "7e1a9c4d2f": "Signing in…",
         "c5b3e8a17d": "Sign in to Orca"
+      },
+      "mantisbt": {
+        "connect": {
+          "dialog": {
+            "remoteStorageCopy": "Your token is sent to the selected remote runtime and stored there with runtime-supported encryption.",
+            "localStorageCopy": "Your token is stored locally and encrypted when local runtime storage supports it.",
+            "title": "Connect MantisBT site",
+            "description": "Use a self-hosted MantisBT base URL and an API token to browse issues.",
+            "siteUrl": "MantisBT site URL",
+            "siteUrlPlaceholder": "https://mantisbt.example.com",
+            "apiToken": "API token",
+            "apiTokenPlaceholder": "MantisBT API token",
+            "tokenHint": "Create an API token from your MantisBT account preferences.",
+            "cancel": "Cancel",
+            "connecting": "Verifying…",
+            "connect": "Connect"
+          }
+        }
       }
     },
     "i18n": {

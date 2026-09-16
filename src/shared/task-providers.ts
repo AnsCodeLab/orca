@@ -1,6 +1,12 @@
-export type TaskProvider = 'github' | 'gitlab' | 'linear' | 'jira' | 'mantis'
+export type TaskProvider = 'github' | 'gitlab' | 'linear' | 'jira' | 'mantisBT'
 
-export const TASK_PROVIDERS: readonly TaskProvider[] = ['github', 'gitlab', 'linear', 'jira', 'mantis']
+export const TASK_PROVIDERS: readonly TaskProvider[] = [
+  'github',
+  'gitlab',
+  'linear',
+  'jira',
+  'mantisBT'
+]
 
 const TASK_PROVIDER_SET = new Set<TaskProvider>(TASK_PROVIDERS)
 
@@ -106,7 +112,7 @@ function isTaskProviderAvailable(
     return true
   }
   // Why: same self-serve connect entry point as Jira.
-  if (provider === 'mantis') {
+  if (provider === 'mantisBT') {
     return true
   }
   return availability.linearConnected

@@ -103,7 +103,7 @@ export const TaskProviderIdentity = z
       .passthrough(),
     z
       .object({
-        provider: z.literal('mantis'),
+        provider: z.literal('mantisBT'),
         siteId: z.string().nullable().optional(),
         siteUrl: z.string().nullable().optional(),
         projectId: z.string().nullable().optional()
@@ -116,7 +116,7 @@ export const TaskProviderIdentity = z
 export const TaskSourceContext = z
   .object({
     kind: z.literal('task-source'),
-    provider: z.enum(['github', 'gitlab', 'linear', 'jira', 'mantis']),
+    provider: z.enum(['github', 'gitlab', 'linear', 'jira', 'mantisBT']),
     projectId: requiredString('Missing source project id'),
     hostId: ExecutionHostId,
     projectHostSetupId: OptionalNullablePlainString,

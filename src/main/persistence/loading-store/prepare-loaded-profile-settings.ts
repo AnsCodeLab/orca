@@ -104,15 +104,15 @@ export function prepareLoadedProfileSettings(
     : rawTaskProviderSettings.visibleTaskProviders.includes('jira')
       ? rawTaskProviderSettings.visibleTaskProviders
       : [...rawTaskProviderSettings.visibleTaskProviders, 'jira' as const]
-  const visibleTaskProvidersDefaultedForMantis =
-    parsed.settings?.visibleTaskProvidersDefaultedForMantis === true
-  const migratedVisibleTaskProvidersWithMantis = visibleTaskProvidersDefaultedForMantis
+  const visibleTaskProvidersDefaultedForMantisBT =
+    parsed.settings?.visibleTaskProvidersDefaultedForMantisBT === true
+  const migratedVisibleTaskProvidersWithMantisBT = visibleTaskProvidersDefaultedForMantisBT
     ? migratedVisibleTaskProviders
-    : migratedVisibleTaskProviders.includes('mantis')
+    : migratedVisibleTaskProviders.includes('mantisBT')
       ? migratedVisibleTaskProviders
-      : [...migratedVisibleTaskProviders, 'mantis' as const]
+      : [...migratedVisibleTaskProviders, 'mantisBT' as const]
   const taskProviderSettings = normalizeTaskProviderSettings({
-    visibleTaskProviders: migratedVisibleTaskProvidersWithMantis,
+    visibleTaskProviders: migratedVisibleTaskProvidersWithMantisBT,
     defaultTaskSource: rawTaskProviderSettings.defaultTaskSource
   })
   const primarySelectionDefaultedForLinux =
@@ -134,7 +134,7 @@ export function prepareLoadedProfileSettings(
   if (!visibleTaskProvidersDefaultedForJira) {
     markNeedsSave()
   }
-  if (!visibleTaskProvidersDefaultedForMantis) {
+  if (!visibleTaskProvidersDefaultedForMantisBT) {
     markNeedsSave()
   }
   const claudeAgentTeamsDefaultDisabledMigrated =
