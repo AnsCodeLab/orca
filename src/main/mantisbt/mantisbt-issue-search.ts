@@ -48,9 +48,13 @@ export async function listIssues(
             filter === 'all'
               ? null
               : toViewer(
-                  await mantisBTRequest(entry, `${apiBasePath()}/users/me`, {
-                    signal: requestSignal
-                  })
+                  await mantisBTRequest(
+                    entry,
+                    `${apiBasePath(entry.site.usePhpIndexPath)}/users/me`,
+                    {
+                      signal: requestSignal
+                    }
+                  )
                 ).id
           const records = await fetchAllIssuePages(
             entry,
@@ -59,7 +63,7 @@ export async function listIssues(
                 page: String(page),
                 page_size: String(pageSize)
               })
-              return `${apiBasePath()}/issues?${params.toString()}`
+              return `${apiBasePath(entry.site.usePhpIndexPath)}/issues?${params.toString()}`
             },
             50,
             requestSignal

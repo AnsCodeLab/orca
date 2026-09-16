@@ -31,7 +31,7 @@ export async function getIssue(
       try {
         const response = await mantisBTRequest<MantisBTIssueResponse>(
           entry,
-          `${apiBasePath()}/issues/${encodeURIComponent(id)}`,
+          `${apiBasePath(entry.site.usePhpIndexPath)}/issues/${encodeURIComponent(id)}`,
           { signal: requestSignal }
         )
         const issue = response.issues?.[0]

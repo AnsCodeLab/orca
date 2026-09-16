@@ -110,7 +110,13 @@ function normalizeSite(input: unknown): MantisBTSite | null {
     id: record.id,
     siteUrl: record.siteUrl,
     userId: record.userId,
-    displayName: record.displayName
+    displayName: record.displayName,
+    // Why: sites saved before probeMantisBTConnection existed have neither
+    // field on disk — default to the combination connect() always used back
+    // then (RFC 6750 Bearer, pretty REST URL) so they keep working exactly
+    // as they did until the user reconnects and a fresh probe corrects it.
+    authScheme: record.authScheme === 'legacy' ? 'legacy' : 'bearer',
+    usePhpIndexPath: record.usePhpIndexPath === true
   }
 }
 
