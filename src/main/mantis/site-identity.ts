@@ -2,10 +2,21 @@ import { createHash } from 'node:crypto'
 import type { MantisSite, MantisViewer } from '../../shared/mantis-types'
 import { asRecord } from './mantis-record-pages'
 
+const LOOPBACK_HOSTNAMES: Record<string, true> = { localhost: true, '127.0.0.1': true, '::1': true }
+
 export function normalizeMantisSiteUrl(siteUrl: string): string {
   const trimmed = siteUrl.trim()
   const withProtocol = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
   const url = new URL(withProtocol)
+  // Why: the API token goes out as a bearer header on every request (CWE-319);
+  // only a loopback host is exempted, for local development against a
+  // Mantis instance run on the same machine.
+  if (
+    url.protocol !== 'https:' &&
+    !(url.protocol === 'http:' && LOOPBACK_HOSTNAMES[url.hostname])
+  ) {
+    throw new Error('Enter an HTTPS Mantis site URL (HTTP is only allowed for localhost).')
+  }
   url.pathname = url.pathname.replace(/\/+$/, '')
   url.search = ''
   url.hash = ''
@@ -16,11 +27,12 @@ export function getSiteId(siteUrl: string, userId: string): string {
   return createHash('sha256').update(`${siteUrl}\n${userId}`).digest('base64url').slice(0, 24)
 }
 
-// Why: MantisBT's `rest_user_get_me` handler wraps the identity in a `user`
-// object (some deployments instead return a `users` array). Accept either
-// envelope, or an already-unwrapped record, so callers can pass the raw
-// response body straight through without knowing which shape they got.
-
+// Why: `GET /api/rest/users/me` returns a flat user object (MantisBT's
+// rest_user_get_me calls UserGetCommand with `return_as_users: false`) — the
+// `user`/`users` envelope only wraps responses from `/users/{id}` and
+// `/users/username/{username}`. Accept all three shapes defensively so a
+// caller that reuses this helper for another endpoint (or a deployment that
+// deviates from stock MantisBT) still resolves correctly.
 function extractMantisUser(data: Record<string, unknown>): Record<string, unknown> {
   if (data.user && typeof data.user === 'object') {
     return asRecord(data.user)

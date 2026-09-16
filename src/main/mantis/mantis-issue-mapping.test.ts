@@ -28,7 +28,7 @@ describe('mapMantisIssue', () => {
       id: '123',
       summary: 'Something broke',
       description: 'Detailed repro steps',
-      project: { id: '1', name: 'Demo' },
+      project: { id: '1', siteId: 'site-1', name: 'Demo' },
       status: { id: '10', name: 'new', label: 'new' },
       priority: { id: '30', name: 'normal', label: 'normal' },
       reporter: { id: '5', name: 'reporter', realName: 'Reporter Real' },
@@ -90,8 +90,16 @@ describe('mapMantisIssue', () => {
 
 describe('mapMantisProject', () => {
   it('maps id and name defensively, falling back when name is missing', () => {
-    expect(mapMantisProject({ id: 5, name: 'Demo' })).toEqual({ id: '5', name: 'Demo' })
-    expect(mapMantisProject({ id: 5 })).toEqual({ id: '5', name: '5' })
-    expect(mapMantisProject({})).toEqual({ id: '', name: 'Untitled project' })
+    expect(mapMantisProject(site, { id: 5, name: 'Demo' })).toEqual({
+      id: '5',
+      siteId: 'site-1',
+      name: 'Demo'
+    })
+    expect(mapMantisProject(site, { id: 5 })).toEqual({ id: '5', siteId: 'site-1', name: '5' })
+    expect(mapMantisProject(site, {})).toEqual({
+      id: '',
+      siteId: 'site-1',
+      name: 'Untitled project'
+    })
   })
 })

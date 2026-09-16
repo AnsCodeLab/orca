@@ -250,4 +250,43 @@ describe('Mantis listIssues', () => {
     expect(existsSync(tokenPathForSite('beta'))).toBe(false)
     expect(mantis.getStatus().sites.map((site) => site.id)).toEqual(['alpha'])
   })
+
+  it('throws for a specific single-site selection when that site returns a 500', async () => {
+    writeMantisSites([
+      { id: 'site-a', siteUrl: 'https://mantis.example.com', userId: '42', token: 'token-a' }
+    ])
+    netFetchMock.mockImplementation(async () => jsonResponse({ message: 'Internal error' }, 500))
+    const mantis = await loadSearchModule()
+
+    await expect(mantis.listIssues('all', 30, 'site-a')).rejects.toThrow('Internal error')
+  })
+
+  it('throws when every connected site fails under an all selection', async () => {
+    writeMantisSites([
+      { id: 'alpha', siteUrl: 'https://alpha.example.com', userId: 'user-alpha', token: 'token-a' },
+      { id: 'beta', siteUrl: 'https://beta.example.com', userId: 'user-beta', token: 'token-b' }
+    ])
+    netFetchMock.mockImplementation(async () => jsonResponse({ message: 'Internal error' }, 500))
+    const mantis = await loadSearchModule()
+
+    await expect(mantis.listIssues('all', 30, 'all')).rejects.toThrow('Internal error')
+  })
+
+  it('throws MantisPaginationLimitError instead of silently truncating a huge result set', async () => {
+    writeMantisSites([
+      { id: 'site-a', siteUrl: 'https://mantis.example.com', userId: '42', token: 'token-a' }
+    ])
+    // Every page comes back full (50 items), so the server never signals the
+    // end of the list — this must trip the pagination safety guard.
+    netFetchMock.mockImplementation(async () =>
+      jsonResponse({
+        issues: Array.from({ length: 50 }, (_, index) =>
+          makeIssueRecord(index + 1, null, '2024-01-01T00:00:00.000Z')
+        )
+      })
+    )
+    const mantis = await loadSearchModule()
+
+    await expect(mantis.listIssues('all', 30, 'site-a')).rejects.toThrow(/pagination safety limit/)
+  })
 })

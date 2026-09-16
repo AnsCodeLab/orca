@@ -50,11 +50,12 @@ function mapMantisPriority(value: unknown): MantisIssuePriority | undefined {
   }
 }
 
-export function mapMantisProject(value: unknown): MantisProject {
+export function mapMantisProject(site: MantisSite, value: unknown): MantisProject {
   const project = asRecord(value)
   const id = asIdentifier(project.id)
   return {
     id,
+    siteId: site.id,
     name: asString(project.name, id || 'Untitled project')
   }
 }
@@ -73,7 +74,7 @@ export function mapMantisIssue(site: MantisSite, raw: Record<string, unknown>): 
     id,
     summary: asString(raw.summary),
     description: asString(raw.description) || undefined,
-    project: mapMantisProject(raw.project),
+    project: mapMantisProject(site, raw.project),
     status: mapMantisStatus(raw.status),
     priority: mapMantisPriority(raw.priority),
     reporter: mapMantisUser(raw.reporter),

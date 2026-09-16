@@ -19,18 +19,33 @@ export function asFiniteNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
+export class MantisPaginationLimitError extends Error {
+  constructor() {
+    super('Mantis issue list exceeded the pagination safety limit; narrow the query.')
+    this.name = 'MantisPaginationLimitError'
+  }
+}
+
 // MantisBT's issue listing has no cursor/total envelope to detect the last
 // page from, so a short page (fewer than requested, including empty) is the
-// only reliable "no more results" signal. The 50-page guard mirrors Jira's
-// 100-page guard: a ceiling against a server that never returns a short page.
+// only reliable "no more results" signal. The 500-page ceiling is a safety
+// net against a server that never returns a short page — hitting it throws
+// instead of silently returning a truncated result set, since a Mantis
+// instance can legitimately have more than 25,000 issues on one project.
 export async function fetchAllIssuePages(
   entry: MantisClientForSite,
   pathForPage: (page: number, pageSize: number) => string,
-  pageSize = 50
+  pageSize = 50,
+  signal?: AbortSignal
 ): Promise<MantisRecord[]> {
   const records: MantisRecord[] = []
-  for (let page = 1, guard = 0; guard < 50; page += 1, guard += 1) {
-    const response = await mantisRequest<MantisIssuesResponse>(entry, pathForPage(page, pageSize))
+  for (let page = 1, guard = 0; ; page += 1, guard += 1) {
+    if (guard >= 500) {
+      throw new MantisPaginationLimitError()
+    }
+    const response = await mantisRequest<MantisIssuesResponse>(entry, pathForPage(page, pageSize), {
+      signal
+    })
     const items = Array.isArray(response.issues) ? response.issues : []
     records.push(...items)
     if (items.length < pageSize) {

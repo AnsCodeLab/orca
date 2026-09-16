@@ -40,17 +40,19 @@ export const MANTIS_METHODS = [
   defineMethod({
     name: 'mantis.listIssues',
     params: ListIssues,
-    handler: async (params, { runtime }) =>
-      runtime.mantisListIssues(params?.filter, params?.limit, params?.siteId)
+    handler: async (params, { runtime, signal }) =>
+      runtime.mantisListIssues(params?.filter, params?.limit, params?.siteId, signal)
   }),
   defineMethod({
     name: 'mantis.getIssue',
     params: IssueId,
-    handler: async (params, { runtime }) => runtime.mantisGetIssue(params.id.trim(), params.siteId)
+    handler: async (params, { runtime, signal }) =>
+      runtime.mantisGetIssue(params.id.trim(), params.siteId, signal)
   }),
   defineMethod({
     name: 'mantis.listProjects',
     params: SiteSelection,
-    handler: async (params, { runtime }) => runtime.mantisListProjects(params?.siteId)
+    handler: async (params, { runtime, signal }) =>
+      runtime.mantisListProjects(params?.siteId, signal)
   })
 ]

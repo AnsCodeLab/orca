@@ -202,7 +202,13 @@ export function deleteToken(siteId: string): void {
   credentialErrors.delete(siteId)
   try {
     unlinkSync(getTokenPath(siteId))
-  } catch {
-    // Token may not exist — safe to ignore.
+  } catch (error) {
+    // Why: only a missing file means "already gone" — a permission or I/O
+    // failure here must surface, or the caller reports a successful
+    // disconnect while the token stays readable on disk (CWE-459).
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+      return
+    }
+    throw error
   }
 }

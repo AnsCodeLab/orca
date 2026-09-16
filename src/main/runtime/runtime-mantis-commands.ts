@@ -37,16 +37,24 @@ export class RuntimeMantisCommands {
   mantisListIssues(
     filter?: MantisIssueFilter,
     limit = 30,
-    siteId?: MantisSiteSelection | null
+    siteId?: MantisSiteSelection | null,
+    signal?: AbortSignal
   ): Promise<MantisIssue[]> {
-    return listIssues(filter, limit, siteId)
+    return listIssues(filter, limit, siteId, signal)
   }
 
-  mantisGetIssue(id: string, siteId?: MantisSiteSelection | null): Promise<MantisIssue | null> {
-    return getIssue(id, siteId)
+  mantisGetIssue(
+    id: string,
+    siteId?: MantisSiteSelection | null,
+    signal?: AbortSignal
+  ): Promise<MantisIssue | null> {
+    return getIssue(id, siteId, signal)
   }
 
-  mantisListProjects(siteId?: MantisSiteSelection | null): Promise<MantisProject[]> {
-    return listProjects(siteId)
+  mantisListProjects(
+    siteId?: MantisSiteSelection | null,
+    signal?: AbortSignal
+  ): Promise<MantisProject[]> {
+    return listProjects(siteId, signal)
   }
 }

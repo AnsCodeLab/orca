@@ -34,8 +34,12 @@ export type MantisConnectArgs = {
 
 export type MantisIssueFilter = 'assigned' | 'reported' | 'all'
 
+// Why: `id` is only unique within one Mantis instance — a project id of 1 is
+// the near-universal default project on a fresh install, so two connected
+// sites routinely collide on it. `siteId` makes the pair globally unique.
 export type MantisProject = {
   id: string
+  siteId: string
   name: string
 }
 

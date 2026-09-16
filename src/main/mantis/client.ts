@@ -76,8 +76,11 @@ export async function connect(
   let siteUrl: string
   try {
     siteUrl = normalizeMantisSiteUrl(args.siteUrl)
-  } catch {
-    return { ok: false, error: 'Enter a valid Mantis site URL.' }
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : 'Enter a valid Mantis site URL.'
+    }
   }
 
   const apiToken = args.apiToken.trim()
@@ -116,15 +119,30 @@ export async function connect(
 export function disconnect(siteId?: string): void {
   const file = getSiteFile()
   const ids = siteId ? [siteId] : file.sites.map((site) => site.id)
+  const removed: string[] = []
+  let firstFailure: unknown
   for (const id of ids) {
-    deleteToken(id)
+    try {
+      deleteToken(id)
+      removed.push(id)
+    } catch (error) {
+      firstFailure ??= error
+    }
   }
   writeSiteFile({
     version: 1,
     activeSiteId: file.activeSiteId,
     selectedSiteId: file.selectedSiteId,
-    sites: file.sites.filter((site) => !ids.includes(site.id))
+    sites: file.sites.filter((site) => !removed.includes(site.id))
   })
+  // Why: a token-file deletion failure must not look like a successful
+  // disconnect (CWE-459) — the site file above still reflects the sites that
+  // really were removed, but the caller learns the operation was incomplete.
+  if (firstFailure !== undefined) {
+    throw firstFailure instanceof Error
+      ? firstFailure
+      : new Error('Failed to remove one or more Mantis credentials.')
+  }
 }
 
 export function selectSite(siteId: MantisSiteSelection): MantisConnectionStatus {
@@ -157,6 +175,13 @@ export async function testConnection(
     const viewer = toViewer(await mantisRequest(client, `${apiBasePath()}/users/me`))
     return { ok: true, viewer }
   } catch (error) {
+    if (isAuthError(error)) {
+      try {
+        clearToken(client.site.id)
+      } catch (evictionError) {
+        console.warn('[mantis] failed to evict invalid token:', evictionError)
+      }
+    }
     return { ok: false, error: error instanceof Error ? error.message : 'Connection failed.' }
   } finally {
     release()

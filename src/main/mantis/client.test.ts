@@ -1,4 +1,11 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import type * as Os from 'node:os'
 import { join } from 'node:path'
@@ -343,5 +350,54 @@ describe('Mantis client credential storage', () => {
     expect(resolveProxyMock).toHaveBeenCalledWith('https://mantis.example.com/api/rest/users/me')
     expect(netFetchMock).toHaveBeenCalledTimes(1)
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('evicts the token when testConnection receives a 401', async () => {
+    const siteId = 'site-alpha'
+    writeMantisFiles(siteId, 'token-alpha')
+    netFetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ message: 'Access denied' }), {
+        status: 401,
+        statusText: 'Unauthorized',
+        headers: { 'Content-Type': 'application/json' }
+      })
+    )
+    const mantis = await loadClientModule({ encryptionAvailable: true })
+
+    await expect(mantis.testConnection(siteId)).resolves.toMatchObject({ ok: false })
+
+    expect(existsSync(tokenPathForSite(siteId))).toBe(false)
+    expect(mantis.getStatus()).toMatchObject({ connected: false, sites: [] })
+  })
+
+  it('propagates a real deletion failure from disconnect instead of reporting success', async () => {
+    const siteId = 'site-alpha'
+    writeMantisFiles(siteId, 'token-alpha')
+    const tokenPath = tokenPathForSite(siteId)
+    // Replace the token file with a directory so unlinkSync fails with
+    // EISDIR — a real non-ENOENT deletion failure, distinct from "already
+    // gone", that must not be swallowed as a successful disconnect.
+    unlinkSync(tokenPath)
+    mkdirSync(tokenPath)
+    const mantis = await loadClientModule({ encryptionAvailable: true })
+    expect(mantis.getStatus().connected).toBe(true)
+
+    expect(() => mantis.disconnect(siteId)).toThrow()
+
+    // Deletion genuinely failed — the directory is still there, and the
+    // site is not silently reported as disconnected.
+    expect(existsSync(tokenPath)).toBe(true)
+  })
+
+  it('surfaces the HTTPS-required error message when connecting over plain HTTP', async () => {
+    const mantis = await loadClientModule()
+
+    await expect(
+      mantis.connect({ siteUrl: 'http://mantis.example.com', apiToken: 'token-alpha' })
+    ).resolves.toEqual({
+      ok: false,
+      error: 'Enter an HTTPS Mantis site URL (HTTP is only allowed for localhost).'
+    })
+    expect(netFetchMock).not.toHaveBeenCalled()
   })
 })
