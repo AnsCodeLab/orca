@@ -46,7 +46,14 @@ function connectedStatus(displayName: string, siteId = 'site-1'): MantisBTConnec
     connected: true,
     viewer: viewer(displayName),
     sites: [
-      { id: siteId, siteUrl: `https://${siteId}.example.com`, userId: '1', displayName: siteId }
+      {
+        id: siteId,
+        siteUrl: `https://${siteId}.example.com`,
+        userId: '1',
+        displayName: siteId,
+        authScheme: 'bearer',
+        usePhpIndexPath: false
+      }
     ],
     activeSiteId: siteId,
     selectedSiteId: siteId

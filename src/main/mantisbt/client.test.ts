@@ -214,19 +214,26 @@ describe('MantisBT client credential storage', () => {
   })
 
   it('reports a connection failure for an invalid token', async () => {
-    netFetchMock.mockResolvedValueOnce(
+    const unauthorized = () =>
       new Response(JSON.stringify({ message: 'Access denied' }), {
         status: 401,
         statusText: 'Unauthorized',
         headers: { 'Content-Type': 'application/json' }
       })
-    )
+    // A genuinely bad token fails every auth-scheme/path-style combo the
+    // connect probe tries, so all four must be queued.
+    netFetchMock
+      .mockResolvedValueOnce(unauthorized())
+      .mockResolvedValueOnce(unauthorized())
+      .mockResolvedValueOnce(unauthorized())
+      .mockResolvedValueOnce(unauthorized())
     const mantisBT = await loadClientModule()
 
     await expect(
       mantisBT.connect({ siteUrl: 'mantisbt.example.com', apiToken: 'bad-token' })
     ).resolves.toEqual({ ok: false, error: 'Access denied' })
 
+    expect(netFetchMock).toHaveBeenCalledTimes(4)
     expect(fetchMock).not.toHaveBeenCalled()
     expect(mantisBT.getStatus()).toMatchObject({ connected: false })
   })
@@ -399,5 +406,115 @@ describe('MantisBT client credential storage', () => {
       error: 'Enter an HTTPS MantisBT site URL (HTTP is only allowed for localhost).'
     })
     expect(netFetchMock).not.toHaveBeenCalled()
+  })
+
+  it('falls back through legacy auth scheme and index.php path for a pre-2.29 self-hosted server', async () => {
+    // Reproduces a real deployment: modern Bearer scheme 401s (server
+    // predates 2.29.0's RFC 6750 support), the Bearer+index.php combo 404s
+    // (still the wrong auth scheme), legacy scheme without index.php 401s
+    // (URL rewriting isn't configured), and only legacy+index.php succeeds.
+    const unauthorized = () =>
+      new Response(JSON.stringify({ message: 'Access denied' }), { status: 401 })
+    const notFound = () => new Response('Not Found', { status: 404 })
+    netFetchMock
+      .mockResolvedValueOnce(unauthorized())
+      .mockResolvedValueOnce(notFound())
+      .mockResolvedValueOnce(unauthorized())
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ user: { id: 34, name: 'anson', real_name: 'Anson' } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      )
+    const mantisBT = await loadClientModule({ encryptionAvailable: true })
+
+    await expect(
+      mantisBT.connect({ siteUrl: 'mantisbt.example.com', apiToken: 'legacy-token' })
+    ).resolves.toMatchObject({ ok: true, viewer: { displayName: 'Anson' } })
+
+    expect(netFetchMock).toHaveBeenCalledTimes(4)
+    const urls = netFetchMock.mock.calls.map((call) => call[0])
+    expect(urls).toEqual([
+      'https://mantisbt.example.com/api/rest/users/me',
+      'https://mantisbt.example.com/api/rest/index.php/users/me',
+      'https://mantisbt.example.com/api/rest/users/me',
+      'https://mantisbt.example.com/api/rest/index.php/users/me'
+    ])
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: authenticated-request.ts always constructs RequestInit.headers as a Headers instance before calling fetch.
+    const lastHeaders = netFetchMock.mock.calls[3]?.[1]?.headers as Headers
+    expect(lastHeaders.get('Authorization')).toBe('legacy-token')
+
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: this is exactly the shape writeSiteFile serializes; the assertion below verifies the negotiated combo was persisted.
+    const stored = JSON.parse(
+      readFileSync(join(tempHome, '.orca', 'mantisBT-sites.json'), 'utf-8')
+    ) as { sites: { authScheme: string; usePhpIndexPath: boolean }[] }
+    expect(stored.sites[0]).toMatchObject({ authScheme: 'legacy', usePhpIndexPath: true })
+  })
+
+  it('reuses the persisted auth scheme and path style without re-probing', async () => {
+    const siteId = 'site-legacy'
+    const orcaDir = join(tempHome, '.orca')
+    mkdirSync(join(orcaDir, 'mantisBT-tokens'), { recursive: true })
+    writeFileSync(
+      join(orcaDir, 'mantisBT-sites.json'),
+      JSON.stringify({
+        version: 1,
+        activeSiteId: siteId,
+        selectedSiteId: siteId,
+        sites: [
+          {
+            id: siteId,
+            siteUrl: 'https://mantisbt.example.com',
+            userId: '34',
+            displayName: 'Anson',
+            authScheme: 'legacy',
+            usePhpIndexPath: true
+          }
+        ]
+      })
+    )
+    writeFileSync(tokenPathForSite(siteId), 'legacy-token')
+    netFetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ user: { id: 34, name: 'anson', real_name: 'Anson' } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    )
+    const mantisBT = await loadClientModule({ encryptionAvailable: true })
+
+    await expect(mantisBT.testConnection(siteId)).resolves.toMatchObject({ ok: true })
+
+    expect(netFetchMock).toHaveBeenCalledTimes(1)
+    expect(netFetchMock).toHaveBeenCalledWith(
+      'https://mantisbt.example.com/api/rest/index.php/users/me',
+      expect.objectContaining({ headers: expect.any(Headers) })
+    )
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: authenticated-request.ts always constructs RequestInit.headers as a Headers instance before calling fetch.
+    const headers = netFetchMock.mock.calls[0]?.[1]?.headers as Headers
+    expect(headers.get('Authorization')).toBe('legacy-token')
+  })
+
+  it('defaults a site file saved before scheme/path negotiation existed to Bearer and the pretty REST path', async () => {
+    const siteId = 'site-alpha'
+    // writeMantisBTFiles intentionally omits authScheme/usePhpIndexPath to
+    // model a site file persisted before this negotiation existed.
+    writeMantisBTFiles(siteId, 'token-alpha')
+    netFetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ user: { id: 42, name: 'wquintal', real_name: 'William' } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    )
+    const mantisBT = await loadClientModule({ encryptionAvailable: true })
+
+    await expect(mantisBT.testConnection(siteId)).resolves.toMatchObject({ ok: true })
+
+    expect(netFetchMock).toHaveBeenCalledWith(
+      'https://mantisbt.example.com/api/rest/users/me',
+      expect.objectContaining({ headers: expect.any(Headers) })
+    )
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: authenticated-request.ts always constructs RequestInit.headers as a Headers instance before calling fetch.
+    const headers = netFetchMock.mock.calls[0]?.[1]?.headers as Headers
+    expect(headers.get('Authorization')).toBe('Bearer token-alpha')
   })
 })

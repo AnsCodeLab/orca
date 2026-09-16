@@ -1,7 +1,7 @@
 import { ensureElectronProxyFromEnvironment } from '../network/proxy-settings'
 import { getMainHttpClient } from '../network/http-client'
 import { withSpan } from '../observability/tracer'
-import type { MantisBTSite } from '../../shared/mantisbt-types'
+import type { MantisBTAuthScheme, MantisBTSite } from '../../shared/mantisbt-types'
 
 // Why: matches Jira's authenticated-request.ts choice of a non-browser
 // User-Agent — Electron's net.fetch otherwise sends a Chrome UA, and some
@@ -13,8 +13,10 @@ export type MantisBTClientForSite = {
   authorization: string
 }
 
-export function apiBasePath(): string {
-  return '/api/rest'
+// Why: a server without URL rewriting (Apache mod_rewrite/nginx try_files)
+// needs `index.php` in the REST path or every request 404s.
+export function apiBasePath(usePhpIndexPath: boolean): string {
+  return usePhpIndexPath ? '/api/rest/index.php' : '/api/rest'
 }
 
 export class MantisBTApiError extends Error {
@@ -26,10 +28,12 @@ export class MantisBTApiError extends Error {
   }
 }
 
-// MantisBT REST auth is a single per-user API token sent as a Bearer token
-// (RFC 6750); there is no Basic/PAT branching the way Jira Server/Cloud need.
-export function authHeader(apiToken: string): string {
-  return `Bearer ${apiToken}`
+// MantisBT REST auth is a single per-user API token. The RFC 6750 `Bearer`
+// scheme is current as of 2.29.0; older servers don't recognize it and 401
+// unless the token is sent bare (the pre-2.29.0 form, still accepted by
+// current MantisBT for backwards compatibility). connect() probes both.
+export function authHeader(apiToken: string, scheme: MantisBTAuthScheme): string {
+  return scheme === 'bearer' ? `Bearer ${apiToken}` : apiToken
 }
 
 function describeErrorCause(error: unknown): string | undefined {
@@ -88,13 +92,14 @@ export async function requestWithCredentials(
   siteUrl: string,
   apiToken: string,
   path: string,
+  scheme: MantisBTAuthScheme,
   init?: RequestInit
 ): Promise<unknown> {
   const headers = new Headers(init?.headers)
   headers.set('Accept', 'application/json')
   headers.set('Content-Type', 'application/json')
   headers.set('User-Agent', MANTISBT_API_USER_AGENT)
-  headers.set('Authorization', authHeader(apiToken))
+  headers.set('Authorization', authHeader(apiToken, scheme))
   const response = await mantisBTFetch(`${siteUrl}${path}`, {
     ...init,
     headers
@@ -106,6 +111,58 @@ export async function requestWithCredentials(
     return null
   }
   return response.json()
+}
+
+export type MantisBTConnectProbeResult = {
+  data: unknown
+  authScheme: MantisBTAuthScheme
+  usePhpIndexPath: boolean
+}
+
+// Why: tried in this fixed order regardless of which error each attempt
+// hits — a one-time connect probe, so the extra round trips are cheap and
+// the fixed order is simpler to reason about (and test) than branching the
+// next attempt on the specific status code of the last one.
+const CONNECT_PROBE_COMBOS: readonly {
+  authScheme: MantisBTAuthScheme
+  usePhpIndexPath: boolean
+}[] = [
+  { authScheme: 'bearer', usePhpIndexPath: false },
+  { authScheme: 'bearer', usePhpIndexPath: true },
+  { authScheme: 'legacy', usePhpIndexPath: false },
+  { authScheme: 'legacy', usePhpIndexPath: true }
+]
+
+// Why: MantisBT deployments vary independently on auth scheme (see
+// authHeader) and REST path style (see apiBasePath) — neither is knowable
+// from the site URL alone. Probes GET /users/me with each combination and
+// keeps the first that succeeds; the caller persists it on the site so
+// later requests (testConnection, listIssues, ...) skip straight to it.
+export async function probeMantisBTConnection(
+  siteUrl: string,
+  apiToken: string
+): Promise<MantisBTConnectProbeResult> {
+  let lastError: unknown
+  for (const combo of CONNECT_PROBE_COMBOS) {
+    try {
+      const data = await requestWithCredentials(
+        siteUrl,
+        apiToken,
+        `${apiBasePath(combo.usePhpIndexPath)}/users/me`,
+        combo.authScheme
+      )
+      return { data, ...combo }
+    } catch (error) {
+      lastError = error
+      // Why: a non-auth, non-path failure (network error, 5xx, ...) is the
+      // same regardless of which combo sent it, so surface it immediately
+      // instead of repeating it three more times.
+      if (!(error instanceof MantisBTApiError) || (error.status !== 401 && error.status !== 404)) {
+        throw error
+      }
+    }
+  }
+  throw lastError
 }
 
 async function readMantisBTError(response: Response): Promise<string> {

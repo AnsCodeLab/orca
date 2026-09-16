@@ -38,7 +38,7 @@ export async function listProjects(
         try {
           const response = await mantisBTRequest<MantisBTProjectsResponse>(
             entry,
-            `${apiBasePath()}/projects`,
+            `${apiBasePath(entry.site.usePhpIndexPath)}/projects`,
             { signal: requestSignal }
           )
           return (response.projects ?? []).map((project) => mapMantisBTProject(entry.site, project))

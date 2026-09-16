@@ -3,11 +3,21 @@
 // email/username to key an identity on the way Jira Cloud keys on email.
 // A connected site is instead keyed on siteUrl + the numeric user id
 // resolved from `GET /api/rest/users/me` after connecting.
+export type MantisBTAuthScheme = 'bearer' | 'legacy'
+
 export type MantisBTSite = {
   id: string
   siteUrl: string
   userId: string
   displayName: string
+  // Why: older/self-hosted MantisBT deployments vary on two axes that a
+  // fresh install doesn't — the RFC 6750 `Bearer` auth scheme was only
+  // added in 2.29.0 (older servers 401 on it and need the legacy bare
+  // token), and a server without URL rewriting needs `index.php` in the
+  // REST path or every request 404s. connect() probes both once and
+  // persists the working combination so later requests don't re-probe.
+  authScheme: MantisBTAuthScheme
+  usePhpIndexPath: boolean
 }
 
 export type MantisBTViewer = {

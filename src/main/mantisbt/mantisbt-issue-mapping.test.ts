@@ -6,7 +6,9 @@ const site: MantisBTSite = {
   id: 'site-1',
   siteUrl: 'https://mantisbt.example.com',
   userId: '42',
-  displayName: 'William'
+  displayName: 'William',
+  authScheme: 'bearer',
+  usePhpIndexPath: false
 }
 
 describe('mapMantisBTIssue', () => {

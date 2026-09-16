@@ -21,7 +21,7 @@ import {
   authHeader,
   MantisBTApiError,
   mantisBTRequest,
-  requestWithCredentials,
+  probeMantisBTConnection,
   type MantisBTClientForSite
 } from './authenticated-request'
 import { getSiteId, normalizeMantisBTSiteUrl, siteToViewer, toViewer } from './site-identity'
@@ -49,7 +49,7 @@ export function getClients(selection?: MantisBTSiteSelection | null): MantisBTCl
       }
       throw error
     }
-    return token ? [{ site, authorization: authHeader(token) }] : []
+    return token ? [{ site, authorization: authHeader(token, site.authScheme) }] : []
   })
 }
 
@@ -90,15 +90,16 @@ export async function connect(
 
   await acquire()
   try {
-    const viewer = toViewer(
-      await requestWithCredentials(siteUrl, apiToken, `${apiBasePath()}/users/me`)
-    )
+    const probe = await probeMantisBTConnection(siteUrl, apiToken)
+    const viewer = toViewer(probe.data)
     const id = getSiteId(siteUrl, viewer.id)
     const site: MantisBTSite = {
       id,
       siteUrl,
       userId: viewer.id,
-      displayName: viewer.displayName
+      displayName: viewer.displayName,
+      authScheme: probe.authScheme,
+      usePhpIndexPath: probe.usePhpIndexPath
     }
     saveToken(id, apiToken)
     const file = getSiteFile()
@@ -172,7 +173,9 @@ export async function testConnection(
   }
   await acquire()
   try {
-    const viewer = toViewer(await mantisBTRequest(client, `${apiBasePath()}/users/me`))
+    const viewer = toViewer(
+      await mantisBTRequest(client, `${apiBasePath(client.site.usePhpIndexPath)}/users/me`)
+    )
     return { ok: true, viewer }
   } catch (error) {
     if (isAuthError(error)) {
