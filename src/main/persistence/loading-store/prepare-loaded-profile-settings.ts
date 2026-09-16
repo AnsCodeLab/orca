@@ -104,8 +104,15 @@ export function prepareLoadedProfileSettings(
     : rawTaskProviderSettings.visibleTaskProviders.includes('jira')
       ? rawTaskProviderSettings.visibleTaskProviders
       : [...rawTaskProviderSettings.visibleTaskProviders, 'jira' as const]
+  const visibleTaskProvidersDefaultedForMantis =
+    parsed.settings?.visibleTaskProvidersDefaultedForMantis === true
+  const migratedVisibleTaskProvidersWithMantis = visibleTaskProvidersDefaultedForMantis
+    ? migratedVisibleTaskProviders
+    : migratedVisibleTaskProviders.includes('mantis')
+      ? migratedVisibleTaskProviders
+      : [...migratedVisibleTaskProviders, 'mantis' as const]
   const taskProviderSettings = normalizeTaskProviderSettings({
-    visibleTaskProviders: migratedVisibleTaskProviders,
+    visibleTaskProviders: migratedVisibleTaskProvidersWithMantis,
     defaultTaskSource: rawTaskProviderSettings.defaultTaskSource
   })
   const primarySelectionDefaultedForLinux =
@@ -125,6 +132,9 @@ export function prepareLoadedProfileSettings(
     markNeedsSave()
   }
   if (!visibleTaskProvidersDefaultedForJira) {
+    markNeedsSave()
+  }
+  if (!visibleTaskProvidersDefaultedForMantis) {
     markNeedsSave()
   }
   const claudeAgentTeamsDefaultDisabledMigrated =

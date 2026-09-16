@@ -473,7 +473,7 @@ describe('Store', () => {
     })
 
     const store = await createStore()
-    expect(store.getSettings().visibleTaskProviders).toEqual(['gitlab', 'jira'])
+    expect(store.getSettings().visibleTaskProviders).toEqual(['gitlab', 'jira', 'mantis'])
   })
 
   it('preserves a deliberate Jira provider opt-out after migration', async () => {
@@ -484,6 +484,27 @@ describe('Store', () => {
       settings: {
         visibleTaskProviders: ['gitlab'],
         visibleTaskProvidersDefaultedForJira: true
+      },
+      ui: {},
+      githubCache: { pr: {}, issue: {} },
+      workspaceSession: {}
+    })
+
+    const store = await createStore()
+    // Why: the Jira flag alone is already stamped, but the independent Mantis
+    // one-shot migration hasn't run yet on this profile, so it still fires.
+    expect(store.getSettings().visibleTaskProviders).toEqual(['gitlab', 'mantis'])
+  })
+
+  it('preserves a deliberate Mantis provider opt-out after migration', async () => {
+    writeDataFile({
+      schemaVersion: 1,
+      repos: [],
+      worktreeMeta: {},
+      settings: {
+        visibleTaskProviders: ['gitlab'],
+        visibleTaskProvidersDefaultedForJira: true,
+        visibleTaskProvidersDefaultedForMantis: true
       },
       ui: {},
       githubCache: { pr: {}, issue: {} },
