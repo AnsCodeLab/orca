@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { getSecretStore } from '../../shared/secret-store'
@@ -22,8 +22,34 @@ const cachedTokens = new Map<string, string>()
 // Why: decrypt failures are recorded per site so getStatus can explain
 // failing reads without re-touching the keychain on every status poll.
 export const credentialErrors = new Map<string, string>()
+let legacyCredentialsMigrationChecked = false
+
+// Why: this store was named mantis-*/Mantis before the mantisBT rename. A
+// one-time, best-effort move keeps any credentials a Phase 1 adopter already
+// saved from being silently orphaned under the old paths.
+function migrateLegacyCredentialsIfNeeded(): void {
+  if (legacyCredentialsMigrationChecked) {
+    return
+  }
+  legacyCredentialsMigrationChecked = true
+  const dir = join(homedir(), '.orca')
+  const legacySitePath = join(dir, 'mantis-sites.json')
+  const legacyTokenDir = join(dir, 'mantis-tokens')
+  try {
+    if (existsSync(legacySitePath) && !existsSync(join(dir, 'mantisBT-sites.json'))) {
+      renameSync(legacySitePath, join(dir, 'mantisBT-sites.json'))
+    }
+    if (existsSync(legacyTokenDir) && !existsSync(join(dir, 'mantisBT-tokens'))) {
+      renameSync(legacyTokenDir, join(dir, 'mantisBT-tokens'))
+    }
+  } catch {
+    // Why: a failed one-time migration must not crash MantisBT status reads;
+    // the legacy files are left in place and the user can reconnect.
+  }
+}
 
 function getOrcaDir(): string {
+  migrateLegacyCredentialsIfNeeded()
   return join(homedir(), '.orca')
 }
 

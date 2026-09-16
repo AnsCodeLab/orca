@@ -2270,7 +2270,11 @@
         "linearModeHasWorktreeTooltip": "Linear tickets linked to an Orca workspace",
         "linearEmptyHasWorktree": "No Linear tickets are linked to an Orca workspace yet. Start work from a Linear issue to see it here.",
         "linearOpenAttachedWorkspace": "Open workspace attached to {{value0}}",
-        "linearWorktreesColumn": "Workspaces"
+        "linearWorktreesColumn": "Workspaces",
+        "mantisbtBrowsingUnsupportedTitle": "MantisBT browsing is not available yet",
+        "mantisbtBrowsingUnsupportedBody": "MantisBT can be connected from Settings, but browsing its issues here is not supported yet. Hide it to use another task source.",
+        "mantisbtHideSource": "Hide MantisBT",
+        "mantisbtSourceLabel": "MantisBT"
       },
       "Terminal": {
         "73768427cf": "Close",
