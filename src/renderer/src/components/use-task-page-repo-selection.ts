@@ -131,7 +131,7 @@ export function useTaskPageRepoSelection(model: TaskPageStoreBindingsModel) {
     selectedJiraSiteId && selectedJiraSiteId !== 'all'
       ? (jiraSites.find((site) => site.id === selectedJiraSiteId) ?? null)
       : null
-  const mantisBTSites = useMemo(() => mantisBTStatus.sites, [mantisBTStatus.sites])
+  const mantisBTSites = useMemo(() => mantisBTStatus.sites ?? [], [mantisBTStatus.sites])
   const selectedMantisBTSiteId =
     mantisBTStatus.selectedSiteId ?? mantisBTStatus.activeSiteId ?? mantisBTSites[0]?.id ?? null
   const selectedMantisBTSite =
