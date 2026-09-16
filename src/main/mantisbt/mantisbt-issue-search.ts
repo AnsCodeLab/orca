@@ -17,7 +17,15 @@ import {
 import { toViewer } from './site-identity'
 import type { MantisBTReadFailure } from './mantisbt-read-failure'
 
-const ISSUE_SEARCH_TIMEOUT_MS = 30_000
+// Why: fetchAllIssuePages fetches every page of a site's issue list (no
+// server-side handler_id/reporter_id filter exists to narrow the request —
+// see below), and a large self-hosted instance's per-page latency can climb
+// with page depth: a live server with 1000+ issues measured page 1 at ~2.8s
+// growing to ~11s by page 20, extrapolating to several minutes for the full
+// listing. The request is cancelable (preset/site switch or navigating away
+// aborts and is ignored by the renderer), so a generous ceiling here trades
+// a long wait for a real server response instead of a premature failure.
+const ISSUE_SEARCH_TIMEOUT_MS = 300_000
 
 function clampLimit(limit: number | undefined, fallback = 30): number {
   return Math.min(Math.max(1, Number.isFinite(limit) ? Number(limit) : fallback), 100)

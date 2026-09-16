@@ -1,6 +1,8 @@
 import type { StateCreator } from 'zustand'
 import type { AppState } from '../types'
+import { createMantisBTCollectionReadActions } from './mantisbt-collection-read-actions'
 import { createMantisBTConnectionActions } from './mantisbt-connection-actions'
+import { createMantisBTIssueReadActions } from './mantisbt-issue-read-actions'
 import type { MantisBTSlice } from './mantisbt-slice-contract'
 
 export type { MantisBTSlice } from './mantisbt-slice-contract'
@@ -16,5 +18,9 @@ export const createMantisBTSlice: StateCreator<AppState, [], [], MantisBTSlice> 
   mantisBTStatusChecked: false,
   mantisBTStatusContextKey: null,
   mantisBTConnectionRevisions: {},
-  ...createMantisBTConnectionActions(set, get)
+  mantisBTIssueCache: {},
+  mantisBTSearchCache: {},
+  ...createMantisBTConnectionActions(set, get),
+  ...createMantisBTIssueReadActions(set, get),
+  ...createMantisBTCollectionReadActions(set, get)
 })
