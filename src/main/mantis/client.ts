@@ -1,0 +1,174 @@
+import { CredentialDecryptionError } from '../integration-credential-file'
+import type {
+  MantisConnectArgs,
+  MantisConnectionStatus,
+  MantisSite,
+  MantisSiteSelection,
+  MantisViewer
+} from '../../shared/mantis-types'
+import { acquire, release } from './request-queue'
+import {
+  credentialErrors,
+  deleteToken,
+  getSiteFile,
+  hasStoredToken,
+  readToken,
+  saveToken,
+  writeSiteFile
+} from './site-credential-store'
+import {
+  apiBasePath,
+  authHeader,
+  MantisApiError,
+  mantisRequest,
+  requestWithCredentials,
+  type MantisClientForSite
+} from './authenticated-request'
+import { getSiteId, normalizeMantisSiteUrl, siteToViewer, toViewer } from './site-identity'
+
+export function getClients(selection?: MantisSiteSelection | null): MantisClientForSite[] {
+  const file = getSiteFile()
+  const selected = selection ?? file.selectedSiteId ?? file.activeSiteId
+  const isAllSelection = selected === 'all'
+  const sites = isAllSelection
+    ? file.sites
+    : file.sites.filter((site) => site.id === (selected ?? file.activeSiteId))
+
+  return sites.flatMap((site) => {
+    let token: string | null
+    try {
+      token = readToken(site.id)
+    } catch (error) {
+      // Why: under an 'all' selection one un-decryptable site must not collapse
+      // reads for the healthy ones. readToken already recorded the per-site
+      // credentialError for getStatus to surface, so skip this site like a
+      // missing token. A specific-site selection still rethrows so the renderer
+      // can surface the decrypt banner promptly.
+      if (isAllSelection && error instanceof CredentialDecryptionError) {
+        return []
+      }
+      throw error
+    }
+    return token ? [{ site, authorization: authHeader(token) }] : []
+  })
+}
+
+export function getStatus(): MantisConnectionStatus {
+  const file = getSiteFile()
+  const sites = file.sites.filter((site) => hasStoredToken(site.id))
+  const activeSite = sites.find((site) => site.id === file.activeSiteId) ?? sites[0] ?? null
+  const credentialError = sites
+    .map((site) => credentialErrors.get(site.id))
+    .find((message) => message !== undefined)
+  return {
+    connected: sites.length > 0,
+    viewer: siteToViewer(activeSite),
+    sites,
+    activeSiteId: activeSite?.id ?? null,
+    selectedSiteId: file.selectedSiteId ?? activeSite?.id ?? null,
+    ...(credentialError ? { credentialError } : {})
+  }
+}
+
+export async function connect(
+  args: MantisConnectArgs
+): Promise<{ ok: true; viewer: MantisViewer } | { ok: false; error: string }> {
+  let siteUrl: string
+  try {
+    siteUrl = normalizeMantisSiteUrl(args.siteUrl)
+  } catch {
+    return { ok: false, error: 'Enter a valid Mantis site URL.' }
+  }
+
+  const apiToken = args.apiToken.trim()
+  if (!apiToken) {
+    return { ok: false, error: 'API token is required.' }
+  }
+
+  await acquire()
+  try {
+    const viewer = toViewer(
+      await requestWithCredentials(siteUrl, apiToken, `${apiBasePath()}/users/me`)
+    )
+    const id = getSiteId(siteUrl, viewer.id)
+    const site: MantisSite = {
+      id,
+      siteUrl,
+      userId: viewer.id,
+      displayName: viewer.displayName
+    }
+    saveToken(id, apiToken)
+    const file = getSiteFile()
+    writeSiteFile({
+      version: 1,
+      activeSiteId: id,
+      selectedSiteId: id,
+      sites: [site, ...file.sites.filter((entry) => entry.id !== id)]
+    })
+    return { ok: true, viewer }
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : 'Connection failed.' }
+  } finally {
+    release()
+  }
+}
+
+export function disconnect(siteId?: string): void {
+  const file = getSiteFile()
+  const ids = siteId ? [siteId] : file.sites.map((site) => site.id)
+  for (const id of ids) {
+    deleteToken(id)
+  }
+  writeSiteFile({
+    version: 1,
+    activeSiteId: file.activeSiteId,
+    selectedSiteId: file.selectedSiteId,
+    sites: file.sites.filter((site) => !ids.includes(site.id))
+  })
+}
+
+export function selectSite(siteId: MantisSiteSelection): MantisConnectionStatus {
+  const file = getSiteFile()
+  if (siteId !== 'all' && !file.sites.some((site) => site.id === siteId)) {
+    return getStatus()
+  }
+  writeSiteFile({
+    ...file,
+    activeSiteId: siteId === 'all' ? file.activeSiteId : siteId,
+    selectedSiteId: siteId
+  })
+  return getStatus()
+}
+
+export async function testConnection(
+  siteId?: string
+): Promise<{ ok: true; viewer: MantisViewer } | { ok: false; error: string }> {
+  let client: MantisClientForSite | undefined
+  try {
+    client = getClients(siteId)[0]
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : 'Connection failed.' }
+  }
+  if (!client) {
+    return { ok: false, error: 'Not connected to Mantis.' }
+  }
+  await acquire()
+  try {
+    const viewer = toViewer(await mantisRequest(client, `${apiBasePath()}/users/me`))
+    return { ok: true, viewer }
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : 'Connection failed.' }
+  } finally {
+    release()
+  }
+}
+
+export function clearToken(siteId: string): void {
+  deleteToken(siteId)
+  const file = getSiteFile()
+  writeSiteFile({ ...file, sites: file.sites.filter((site) => site.id !== siteId) })
+}
+
+export function isAuthError(error: unknown): boolean {
+  return error instanceof MantisApiError && error.status === 401
+}
