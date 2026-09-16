@@ -1,29 +1,29 @@
 const MAX_CONCURRENT = 4
 let running = 0
-type QueuedMantisRequest = {
+type QueuedMantisBTRequest = {
   resolve: () => void
   reject: (error: Error) => void
   signal?: AbortSignal
   onAbort: () => void
 }
-const queue: QueuedMantisRequest[] = []
+const queue: QueuedMantisBTRequest[] = []
 
-function createMantisRequestAbortError(): Error {
-  const error = new Error('Mantis request aborted')
+function createMantisBTRequestAbortError(): Error {
+  const error = new Error('MantisBT request aborted')
   error.name = 'AbortError'
   return error
 }
 
 export function acquire(signal?: AbortSignal): Promise<void> {
   if (signal?.aborted) {
-    return Promise.reject(createMantisRequestAbortError())
+    return Promise.reject(createMantisBTRequestAbortError())
   }
   if (running < MAX_CONCURRENT) {
     running += 1
     return Promise.resolve()
   }
   return new Promise((resolve, reject) => {
-    const entry: QueuedMantisRequest = {
+    const entry: QueuedMantisBTRequest = {
       resolve,
       reject,
       signal,
@@ -33,7 +33,7 @@ export function acquire(signal?: AbortSignal): Promise<void> {
           return
         }
         queue.splice(index, 1)
-        reject(createMantisRequestAbortError())
+        reject(createMantisBTRequestAbortError())
       }
     }
     signal?.addEventListener('abort', entry.onAbort, { once: true })
@@ -51,7 +51,7 @@ export function release(): void {
       next.resolve()
       return
     }
-    next.reject(createMantisRequestAbortError())
+    next.reject(createMantisBTRequestAbortError())
     next = queue.shift()
   }
 }

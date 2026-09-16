@@ -24,18 +24,18 @@ function tokenPathForSite(siteId: string): string {
   return join(
     tempHome,
     '.orca',
-    'mantis-tokens',
+    'mantisBT-tokens',
     `${Buffer.from(siteId).toString('base64url')}.enc`
   )
 }
 
-function writeMantisSites(
+function writeMantisBTSites(
   sites: { id: string; siteUrl: string; userId: string; token: string }[]
 ): void {
   const orcaDir = join(tempHome, '.orca')
-  mkdirSync(join(orcaDir, 'mantis-tokens'), { recursive: true })
+  mkdirSync(join(orcaDir, 'mantisBT-tokens'), { recursive: true })
   writeFileSync(
-    join(orcaDir, 'mantis-sites.json'),
+    join(orcaDir, 'mantisBT-sites.json'),
     JSON.stringify(
       {
         version: 1,
@@ -85,7 +85,7 @@ async function loadProjectQueriesModule() {
   const { setMainHttpClient } = await import('../network/http-client')
   setMainHttpClient({
     fetch: (url, init) => netFetchMock(url, init),
-    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the fixture implements only resolveProxy/setProxy, the two proxySession operations mantisFetch calls.
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the fixture implements only resolveProxy/setProxy, the two proxySession operations mantisBTFetch calls.
     proxySession: () => ({ resolveProxy: resolveProxyMock, setProxy: setProxyMock }) as never
   })
   const { setSecretStore } = await import('../../shared/secret-store')
@@ -102,13 +102,13 @@ async function loadProjectQueriesModule() {
 
   const [client, projectQueries] = await Promise.all([
     import('./client'),
-    import('./mantis-project-queries')
+    import('./mantisbt-project-queries')
   ])
   return { ...client, ...projectQueries }
 }
 
 beforeEach(() => {
-  tempHome = mkdtempLike('orca-mantis-project-queries-')
+  tempHome = mkdtempLike('orca-mantisBT-project-queries-')
   netFetchMock.mockReset()
   resolveProxyMock.mockReset()
   setProxyMock.mockReset()
@@ -125,9 +125,9 @@ afterEach(() => {
   globalThis.fetch = OLD_FETCH
 })
 
-describe('Mantis listProjects', () => {
+describe('MantisBT listProjects', () => {
   it('returns the merged, name-sorted project list from two healthy connected sites', async () => {
-    writeMantisSites([
+    writeMantisBTSites([
       { id: 'alpha', siteUrl: 'https://alpha.example.com', userId: 'user-a', token: 'token-a' },
       { id: 'beta', siteUrl: 'https://beta.example.com', userId: 'user-b', token: 'token-b' }
     ])
@@ -137,15 +137,15 @@ describe('Mantis listProjects', () => {
       }
       return jsonResponse({ projects: [makeProjectRecord(2, 'Apple')] })
     })
-    const mantis = await loadProjectQueriesModule()
+    const mantisBT = await loadProjectQueriesModule()
 
-    const projects = await mantis.listProjects('all')
+    const projects = await mantisBT.listProjects('all')
 
     expect(projects.map((project) => project.name)).toEqual(['Apple', 'Zebra'])
   })
 
   it("does not collapse two different sites' projects that share the same raw project id", async () => {
-    writeMantisSites([
+    writeMantisBTSites([
       { id: 'alpha', siteUrl: 'https://alpha.example.com', userId: 'user-a', token: 'token-a' },
       { id: 'beta', siteUrl: 'https://beta.example.com', userId: 'user-b', token: 'token-b' }
     ])
@@ -155,9 +155,9 @@ describe('Mantis listProjects', () => {
       }
       return jsonResponse({ projects: [makeProjectRecord(1, 'Beta Default')] })
     })
-    const mantis = await loadProjectQueriesModule()
+    const mantisBT = await loadProjectQueriesModule()
 
-    const projects = await mantis.listProjects('all')
+    const projects = await mantisBT.listProjects('all')
 
     expect(projects).toHaveLength(2)
     const bySite = new Map(projects.map((project) => [project.siteId, project]))
@@ -168,19 +168,19 @@ describe('Mantis listProjects', () => {
   })
 
   it('throws immediately for a specific single-site selection on a non-auth failure', async () => {
-    writeMantisSites([
+    writeMantisBTSites([
       { id: 'site-a', siteUrl: 'https://alpha.example.com', userId: 'user-a', token: 'token-a' }
     ])
     netFetchMock.mockImplementation(async () =>
       jsonResponse({ message: 'Database unavailable' }, 500)
     )
-    const mantis = await loadProjectQueriesModule()
+    const mantisBT = await loadProjectQueriesModule()
 
-    await expect(mantis.listProjects('site-a')).rejects.toThrow('Database unavailable')
+    await expect(mantisBT.listProjects('site-a')).rejects.toThrow('Database unavailable')
   })
 
   it("tolerates one site's non-auth failure under an 'all' selection and returns the healthy site's projects", async () => {
-    writeMantisSites([
+    writeMantisBTSites([
       { id: 'alpha', siteUrl: 'https://alpha.example.com', userId: 'user-a', token: 'token-a' },
       { id: 'beta', siteUrl: 'https://beta.example.com', userId: 'user-b', token: 'token-b' }
     ])
@@ -190,27 +190,27 @@ describe('Mantis listProjects', () => {
       }
       return jsonResponse({ projects: [makeProjectRecord(1, 'Demo')] })
     })
-    const mantis = await loadProjectQueriesModule()
+    const mantisBT = await loadProjectQueriesModule()
 
-    const projects = await mantis.listProjects('all')
+    const projects = await mantisBT.listProjects('all')
 
     expect(projects).toHaveLength(1)
     expect(projects[0]?.siteId).toBe('alpha')
   })
 
   it("throws when every connected site fails under an 'all' selection", async () => {
-    writeMantisSites([
+    writeMantisBTSites([
       { id: 'alpha', siteUrl: 'https://alpha.example.com', userId: 'user-a', token: 'token-a' },
       { id: 'beta', siteUrl: 'https://beta.example.com', userId: 'user-b', token: 'token-b' }
     ])
     netFetchMock.mockImplementation(async () => jsonResponse({ message: 'All sites down' }, 500))
-    const mantis = await loadProjectQueriesModule()
+    const mantisBT = await loadProjectQueriesModule()
 
-    await expect(mantis.listProjects('all')).rejects.toThrow('All sites down')
+    await expect(mantisBT.listProjects('all')).rejects.toThrow('All sites down')
   })
 
   it('evicts only the failing site token on a 401 and still returns the healthy site projects', async () => {
-    writeMantisSites([
+    writeMantisBTSites([
       { id: 'alpha', siteUrl: 'https://alpha.example.com', userId: 'user-a', token: 'token-a' },
       { id: 'beta', siteUrl: 'https://beta.example.com', userId: 'user-b', token: 'token-b' }
     ])
@@ -220,13 +220,13 @@ describe('Mantis listProjects', () => {
       }
       return jsonResponse({ projects: [makeProjectRecord(1, 'Demo')] })
     })
-    const mantis = await loadProjectQueriesModule()
+    const mantisBT = await loadProjectQueriesModule()
 
-    const projects = await mantis.listProjects('all')
+    const projects = await mantisBT.listProjects('all')
 
     expect(projects).toHaveLength(1)
     expect(projects[0]?.siteId).toBe('alpha')
     expect(existsSync(tokenPathForSite('beta'))).toBe(false)
-    expect(mantis.getStatus().sites.map((site) => site.id)).toEqual(['alpha'])
+    expect(mantisBT.getStatus().sites.map((site) => site.id)).toEqual(['alpha'])
   })
 })

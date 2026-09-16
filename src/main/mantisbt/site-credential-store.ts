@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { getSecretStore } from '../../shared/secret-store'
@@ -7,32 +7,58 @@ import {
   credentialFileHasContent,
   readStoredCredentialToken
 } from '../integration-credential-file'
-import type { MantisSite, MantisSiteSelection } from '../../shared/mantis-types'
+import type { MantisBTSite, MantisBTSiteSelection } from '../../shared/mantisbt-types'
 
-export type MantisSiteFile = {
+export type MantisBTSiteFile = {
   version: 1
   activeSiteId: string | null
-  selectedSiteId: MantisSiteSelection | null
-  sites: MantisSite[]
+  selectedSiteId: MantisBTSiteSelection | null
+  sites: MantisBTSite[]
 }
 
-let cachedSiteFile: MantisSiteFile | null = null
+let cachedSiteFile: MantisBTSiteFile | null = null
 let siteFileLoaded = false
 const cachedTokens = new Map<string, string>()
 // Why: decrypt failures are recorded per site so getStatus can explain
 // failing reads without re-touching the keychain on every status poll.
 export const credentialErrors = new Map<string, string>()
+let legacyCredentialsMigrationChecked = false
+
+// Why: this store was named mantis-*/Mantis before the mantisBT rename. A
+// one-time, best-effort move keeps any credentials a Phase 1 adopter already
+// saved from being silently orphaned under the old paths.
+function migrateLegacyCredentialsIfNeeded(): void {
+  if (legacyCredentialsMigrationChecked) {
+    return
+  }
+  legacyCredentialsMigrationChecked = true
+  const dir = join(homedir(), '.orca')
+  const legacySitePath = join(dir, 'mantis-sites.json')
+  const legacyTokenDir = join(dir, 'mantis-tokens')
+  try {
+    if (existsSync(legacySitePath) && !existsSync(join(dir, 'mantisBT-sites.json'))) {
+      renameSync(legacySitePath, join(dir, 'mantisBT-sites.json'))
+    }
+    if (existsSync(legacyTokenDir) && !existsSync(join(dir, 'mantisBT-tokens'))) {
+      renameSync(legacyTokenDir, join(dir, 'mantisBT-tokens'))
+    }
+  } catch {
+    // Why: a failed one-time migration must not crash MantisBT status reads;
+    // the legacy files are left in place and the user can reconnect.
+  }
+}
 
 function getOrcaDir(): string {
+  migrateLegacyCredentialsIfNeeded()
   return join(homedir(), '.orca')
 }
 
 function getSiteFilePath(): string {
-  return join(getOrcaDir(), 'mantis-sites.json')
+  return join(getOrcaDir(), 'mantisBT-sites.json')
 }
 
 function getTokenDir(): string {
-  return join(getOrcaDir(), 'mantis-tokens')
+  return join(getOrcaDir(), 'mantisBT-tokens')
 }
 
 function getTokenPath(siteId: string): string {
@@ -53,7 +79,7 @@ function ensureTokenDir(): void {
   }
 }
 
-function emptySiteFile(): MantisSiteFile {
+function emptySiteFile(): MantisBTSiteFile {
   return {
     version: 1,
     activeSiteId: null,
@@ -66,7 +92,7 @@ export function hasStoredToken(siteId: string): boolean {
   return cachedTokens.has(siteId) || credentialFileHasContent(getTokenPath(siteId))
 }
 
-function normalizeSite(input: unknown): MantisSite | null {
+function normalizeSite(input: unknown): MantisBTSite | null {
   if (!input || typeof input !== 'object') {
     return null
   }
@@ -88,18 +114,20 @@ function normalizeSite(input: unknown): MantisSite | null {
   }
 }
 
-function readSiteFileFromDisk(): MantisSiteFile {
+function readSiteFileFromDisk(): MantisBTSiteFile {
   const path = getSiteFilePath()
   if (!existsSync(path)) {
     return emptySiteFile()
   }
   try {
     // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: JSON.parse returns `any`; every field is defensively validated (Array.isArray/typeof) below before use, and normalizeSite re-validates each site entry independently.
-    const parsed = JSON.parse(readFileSync(path, { encoding: 'utf-8' })) as Partial<MantisSiteFile>
+    const parsed = JSON.parse(
+      readFileSync(path, { encoding: 'utf-8' })
+    ) as Partial<MantisBTSiteFile>
     const sites = Array.isArray(parsed.sites)
       ? parsed.sites
           .map((site) => normalizeSite(site))
-          .filter((site): site is MantisSite => site !== null)
+          .filter((site): site is MantisBTSite => site !== null)
           .filter((site) => hasStoredToken(site.id))
       : []
     const activeSiteId =
@@ -119,7 +147,7 @@ function readSiteFileFromDisk(): MantisSiteFile {
   }
 }
 
-export function getSiteFile(): MantisSiteFile {
+export function getSiteFile(): MantisBTSiteFile {
   if (!siteFileLoaded || !cachedSiteFile) {
     cachedSiteFile = readSiteFileFromDisk()
     siteFileLoaded = true
@@ -127,7 +155,7 @@ export function getSiteFile(): MantisSiteFile {
   return cachedSiteFile
 }
 
-export function writeSiteFile(file: MantisSiteFile): void {
+export function writeSiteFile(file: MantisBTSiteFile): void {
   ensureOrcaDir()
   const sites = file.sites.filter((site) => hasStoredToken(site.id))
   const activeSiteId =
@@ -159,7 +187,7 @@ function writeEncryptedToken(path: string, apiToken: string): void {
     writeFileSync(path, getSecretStore().encryptString(apiToken), { mode: 0o600 })
     return
   }
-  console.warn('[mantis] secret encryption unavailable — storing token in plaintext')
+  console.warn('[mantisBT] secret encryption unavailable — storing token in plaintext')
   writeFileSync(path, apiToken, { encoding: 'utf-8', mode: 0o600 })
 }
 
@@ -174,7 +202,7 @@ export function readToken(siteId: string): string | null {
   }
   try {
     const raw = readFileSync(path)
-    const token = readStoredCredentialToken('Mantis', raw)
+    const token = readStoredCredentialToken('MantisBT', raw)
     if (token) {
       cachedTokens.set(siteId, token)
     }

@@ -1,12 +1,12 @@
-import type { MantisSiteSelection } from '../../shared/mantis-types'
+import type { MantisBTSiteSelection } from '../../shared/mantisbt-types'
 
-export type MantisReadFailure = {
+export type MantisBTReadFailure = {
   error: unknown
   auth: boolean
 }
 
 /** Run against one signal that trips on the caller's abort or the request deadline. */
-export async function withMantisDeadline<T>(
+export async function withMantisBTDeadline<T>(
   signal: AbortSignal | undefined,
   timeoutMs: number,
   run: (deadlineSignal: AbortSignal) => Promise<T>
@@ -30,7 +30,7 @@ export async function withMantisDeadline<T>(
 // that one site); an 'all' fan-out tolerates a partial failure so one bad
 // connected site does not hide the others' results.
 export function shouldSurfaceSiteFailure(
-  selection: MantisSiteSelection | null | undefined,
+  selection: MantisBTSiteSelection | null | undefined,
   entryCount: number
 ): boolean {
   return selection !== 'all' && entryCount <= 1
@@ -41,6 +41,6 @@ export function evictSiteTokenSafely(clearToken: (siteId: string) => void, siteI
   try {
     clearToken(siteId)
   } catch (error) {
-    console.warn('[mantis] failed to evict invalid token:', error)
+    console.warn('[mantisBT] failed to evict invalid token:', error)
   }
 }

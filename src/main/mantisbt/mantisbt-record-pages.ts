@@ -1,14 +1,14 @@
-import { mantisRequest, type MantisClientForSite } from './authenticated-request'
+import { mantisBTRequest, type MantisBTClientForSite } from './authenticated-request'
 
-export type MantisRecord = Record<string, unknown>
+export type MantisBTRecord = Record<string, unknown>
 
-type MantisIssuesResponse = {
-  issues?: MantisRecord[]
+type MantisBTIssuesResponse = {
+  issues?: MantisBTRecord[]
 }
 
-export function asRecord(value: unknown): MantisRecord {
+export function asRecord(value: unknown): MantisBTRecord {
   // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: guarded by the `typeof value === 'object'` check in the ternary condition above; every field read off the result is re-validated with `typeof` before use.
-  return value && typeof value === 'object' ? (value as MantisRecord) : {}
+  return value && typeof value === 'object' ? (value as MantisBTRecord) : {}
 }
 
 export function asString(value: unknown, fallback = ''): string {
@@ -19,10 +19,10 @@ export function asFiniteNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
-export class MantisPaginationLimitError extends Error {
+export class MantisBTPaginationLimitError extends Error {
   constructor() {
-    super('Mantis issue list exceeded the pagination safety limit; narrow the query.')
-    this.name = 'MantisPaginationLimitError'
+    super('MantisBT issue list exceeded the pagination safety limit; narrow the query.')
+    this.name = 'MantisBTPaginationLimitError'
   }
 }
 
@@ -30,22 +30,26 @@ export class MantisPaginationLimitError extends Error {
 // page from, so a short page (fewer than requested, including empty) is the
 // only reliable "no more results" signal. The 500-page ceiling is a safety
 // net against a server that never returns a short page — hitting it throws
-// instead of silently returning a truncated result set, since a Mantis
+// instead of silently returning a truncated result set, since a MantisBT
 // instance can legitimately have more than 25,000 issues on one project.
 export async function fetchAllIssuePages(
-  entry: MantisClientForSite,
+  entry: MantisBTClientForSite,
   pathForPage: (page: number, pageSize: number) => string,
   pageSize = 50,
   signal?: AbortSignal
-): Promise<MantisRecord[]> {
-  const records: MantisRecord[] = []
+): Promise<MantisBTRecord[]> {
+  const records: MantisBTRecord[] = []
   for (let page = 1, guard = 0; ; page += 1, guard += 1) {
     if (guard >= 500) {
-      throw new MantisPaginationLimitError()
+      throw new MantisBTPaginationLimitError()
     }
-    const response = await mantisRequest<MantisIssuesResponse>(entry, pathForPage(page, pageSize), {
-      signal
-    })
+    const response = await mantisBTRequest<MantisBTIssuesResponse>(
+      entry,
+      pathForPage(page, pageSize),
+      {
+        signal
+      }
+    )
     const items = Array.isArray(response.issues) ? response.issues : []
     records.push(...items)
     if (items.length < pageSize) {

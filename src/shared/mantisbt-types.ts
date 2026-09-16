@@ -3,73 +3,73 @@
 // email/username to key an identity on the way Jira Cloud keys on email.
 // A connected site is instead keyed on siteUrl + the numeric user id
 // resolved from `GET /api/rest/users/me` after connecting.
-export type MantisSite = {
+export type MantisBTSite = {
   id: string
   siteUrl: string
   userId: string
   displayName: string
 }
 
-export type MantisViewer = {
+export type MantisBTViewer = {
   id: string
   displayName: string
   email?: string
 }
 
-export type MantisSiteSelection = (string & {}) | 'all'
+export type MantisBTSiteSelection = (string & {}) | 'all'
 
-export type MantisConnectionStatus = {
+export type MantisBTConnectionStatus = {
   connected: boolean
-  viewer: MantisViewer | null
-  sites: MantisSite[]
+  viewer: MantisBTViewer | null
+  sites: MantisBTSite[]
   activeSiteId: string | null
-  selectedSiteId: MantisSiteSelection | null
+  selectedSiteId: MantisBTSiteSelection | null
   credentialError?: string
 }
 
-export type MantisConnectArgs = {
+export type MantisBTConnectArgs = {
   siteUrl: string
   apiToken: string
 }
 
-export type MantisIssueFilter = 'assigned' | 'reported' | 'all'
+export type MantisBTIssueFilter = 'assigned' | 'reported' | 'all'
 
-// Why: `id` is only unique within one Mantis instance — a project id of 1 is
+// Why: `id` is only unique within one MantisBT instance — a project id of 1 is
 // the near-universal default project on a fresh install, so two connected
 // sites routinely collide on it. `siteId` makes the pair globally unique.
-export type MantisProject = {
+export type MantisBTProject = {
   id: string
   siteId: string
   name: string
 }
 
-export type MantisIssueStatus = {
+export type MantisBTIssueStatus = {
   id: string
   name: string
   label: string
 }
 
-export type MantisIssuePriority = {
+export type MantisBTIssuePriority = {
   id: string
   name: string
   label: string
 }
 
-export type MantisUser = {
+export type MantisBTUser = {
   id: string
   name: string
   realName?: string
 }
 
-export type MantisIssue = {
+export type MantisBTIssue = {
   id: string
   summary: string
   description?: string
-  project: MantisProject
-  status: MantisIssueStatus
-  priority?: MantisIssuePriority
-  reporter?: MantisUser
-  handler?: MantisUser | null
+  project: MantisBTProject
+  status: MantisBTIssueStatus
+  priority?: MantisBTIssuePriority
+  reporter?: MantisBTUser
+  handler?: MantisBTUser | null
   createdAt: string
   updatedAt: string
   siteId: string

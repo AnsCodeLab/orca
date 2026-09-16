@@ -1,47 +1,47 @@
-import type { MantisProject, MantisSiteSelection } from '../../shared/mantis-types'
+import type { MantisBTProject, MantisBTSiteSelection } from '../../shared/mantisbt-types'
 import { acquire, release } from './request-queue'
-import { apiBasePath, mantisRequest } from './authenticated-request'
+import { apiBasePath, mantisBTRequest } from './authenticated-request'
 import { clearToken, getClients, isAuthError } from './client'
-import { mapMantisProject } from './mantis-issue-mapping'
+import { mapMantisBTProject } from './mantisbt-issue-mapping'
 import {
   evictSiteTokenSafely,
   shouldSurfaceSiteFailure,
-  withMantisDeadline
-} from './mantis-read-failure'
-import type { MantisReadFailure } from './mantis-read-failure'
-import type { MantisRecord } from './mantis-record-pages'
+  withMantisBTDeadline
+} from './mantisbt-read-failure'
+import type { MantisBTReadFailure } from './mantisbt-read-failure'
+import type { MantisBTRecord } from './mantisbt-record-pages'
 
 const PROJECT_LIST_TIMEOUT_MS = 30_000
 
-type MantisProjectsResponse = {
-  projects?: MantisRecord[]
+type MantisBTProjectsResponse = {
+  projects?: MantisBTRecord[]
 }
 
-function projectDedupeKey(project: MantisProject): string {
+function projectDedupeKey(project: MantisBTProject): string {
   return `${project.siteId}:${project.id}`
 }
 
 export async function listProjects(
-  siteId?: MantisSiteSelection | null,
+  siteId?: MantisBTSiteSelection | null,
   signal?: AbortSignal
-): Promise<MantisProject[]> {
+): Promise<MantisBTProject[]> {
   const entries = getClients(siteId)
   if (entries.length === 0) {
     return []
   }
   const surfaceSiteFailure = shouldSurfaceSiteFailure(siteId, entries.length)
-  const failures: (MantisReadFailure | undefined)[] = Array.from({ length: entries.length })
-  const results = await withMantisDeadline(signal, PROJECT_LIST_TIMEOUT_MS, (requestSignal) =>
+  const failures: (MantisBTReadFailure | undefined)[] = Array.from({ length: entries.length })
+  const results = await withMantisBTDeadline(signal, PROJECT_LIST_TIMEOUT_MS, (requestSignal) =>
     Promise.all(
-      entries.map(async (entry, index): Promise<MantisProject[]> => {
+      entries.map(async (entry, index): Promise<MantisBTProject[]> => {
         await acquire(requestSignal)
         try {
-          const response = await mantisRequest<MantisProjectsResponse>(
+          const response = await mantisBTRequest<MantisBTProjectsResponse>(
             entry,
             `${apiBasePath()}/projects`,
             { signal: requestSignal }
           )
-          return (response.projects ?? []).map((project) => mapMantisProject(entry.site, project))
+          return (response.projects ?? []).map((project) => mapMantisBTProject(entry.site, project))
         } catch (error) {
           if (requestSignal.aborted) {
             throw error
@@ -53,7 +53,7 @@ export async function listProjects(
           if (surfaceSiteFailure) {
             throw error
           }
-          console.warn('[mantis] listProjects failed:', error)
+          console.warn('[mantisBT] listProjects failed:', error)
           failures[index] = { error, auth: authFailure }
           return []
         } finally {
@@ -63,16 +63,16 @@ export async function listProjects(
     )
   )
   const recordedFailures = failures.filter(
-    (failure): failure is MantisReadFailure => failure !== undefined
+    (failure): failure is MantisBTReadFailure => failure !== undefined
   )
   if (recordedFailures.length === entries.length) {
     throw (recordedFailures.find((failure) => !failure.auth) ?? recordedFailures[0]).error
   }
-  // Why: project ids are unique only within one Mantis instance (id 1 is the
+  // Why: project ids are unique only within one MantisBT instance (id 1 is the
   // near-universal default project), so an 'all' fan-out dedupes on
   // siteId+id, not the bare id, or two different instances' distinct
   // projects would collide and one would be silently dropped.
-  const byKey = new Map<string, MantisProject>()
+  const byKey = new Map<string, MantisBTProject>()
   for (const project of results.flat()) {
     const key = projectDedupeKey(project)
     if (!byKey.has(key)) {

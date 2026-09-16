@@ -1,12 +1,12 @@
 import type {
-  MantisIssue,
-  MantisIssuePriority,
-  MantisIssueStatus,
-  MantisProject,
-  MantisSite,
-  MantisUser
-} from '../../shared/mantis-types'
-import { asRecord, asString } from './mantis-record-pages'
+  MantisBTIssue,
+  MantisBTIssuePriority,
+  MantisBTIssueStatus,
+  MantisBTProject,
+  MantisBTSite,
+  MantisBTUser
+} from '../../shared/mantisbt-types'
+import { asRecord, asString } from './mantisbt-record-pages'
 
 function asIdentifier(value: unknown): string {
   if (typeof value === 'string') {
@@ -15,7 +15,7 @@ function asIdentifier(value: unknown): string {
   return typeof value === 'number' && Number.isFinite(value) ? String(value) : ''
 }
 
-function mapMantisUser(value: unknown): MantisUser | undefined {
+function mapMantisBTUser(value: unknown): MantisBTUser | undefined {
   const user = asRecord(value)
   const id = asIdentifier(user.id)
   if (!id) {
@@ -28,7 +28,7 @@ function mapMantisUser(value: unknown): MantisUser | undefined {
   }
 }
 
-function mapMantisStatus(value: unknown): MantisIssueStatus {
+function mapMantisBTStatus(value: unknown): MantisBTIssueStatus {
   const status = asRecord(value)
   return {
     id: asIdentifier(status.id),
@@ -37,7 +37,7 @@ function mapMantisStatus(value: unknown): MantisIssueStatus {
   }
 }
 
-function mapMantisPriority(value: unknown): MantisIssuePriority | undefined {
+function mapMantisBTPriority(value: unknown): MantisBTIssuePriority | undefined {
   const priority = asRecord(value)
   const id = asIdentifier(priority.id)
   if (!id) {
@@ -50,7 +50,7 @@ function mapMantisPriority(value: unknown): MantisIssuePriority | undefined {
   }
 }
 
-export function mapMantisProject(site: MantisSite, value: unknown): MantisProject {
+export function mapMantisBTProject(site: MantisBTSite, value: unknown): MantisBTProject {
   const project = asRecord(value)
   const id = asIdentifier(project.id)
   return {
@@ -60,11 +60,11 @@ export function mapMantisProject(site: MantisSite, value: unknown): MantisProjec
   }
 }
 
-export function issueUrl(site: MantisSite, id: string): string {
+export function issueUrl(site: MantisBTSite, id: string): string {
   return `${site.siteUrl}/view.php?id=${id}`
 }
 
-export function mapMantisIssue(site: MantisSite, raw: Record<string, unknown>): MantisIssue {
+export function mapMantisBTIssue(site: MantisBTSite, raw: Record<string, unknown>): MantisBTIssue {
   const id = asIdentifier(raw.id)
   // Why: created_at/updated_at absent would otherwise silently report the
   // lookup time as the issue's timestamps rather than surfacing the gap
@@ -74,11 +74,11 @@ export function mapMantisIssue(site: MantisSite, raw: Record<string, unknown>): 
     id,
     summary: asString(raw.summary),
     description: asString(raw.description) || undefined,
-    project: mapMantisProject(site, raw.project),
-    status: mapMantisStatus(raw.status),
-    priority: mapMantisPriority(raw.priority),
-    reporter: mapMantisUser(raw.reporter),
-    handler: raw.handler === null ? null : mapMantisUser(raw.handler),
+    project: mapMantisBTProject(site, raw.project),
+    status: mapMantisBTStatus(raw.status),
+    priority: mapMantisBTPriority(raw.priority),
+    reporter: mapMantisBTUser(raw.reporter),
+    handler: raw.handler === null ? null : mapMantisBTUser(raw.handler),
     createdAt: asString(raw.created_at, now),
     updatedAt: asString(raw.updated_at, now),
     siteId: site.id,

@@ -1,17 +1,21 @@
 import { sortByUpdatedAtDescending } from '../../shared/updated-at-order'
-import type { MantisIssue, MantisIssueFilter, MantisSiteSelection } from '../../shared/mantis-types'
+import type {
+  MantisBTIssue,
+  MantisBTIssueFilter,
+  MantisBTSiteSelection
+} from '../../shared/mantisbt-types'
 import { acquire, release } from './request-queue'
-import { apiBasePath, mantisRequest } from './authenticated-request'
+import { apiBasePath, mantisBTRequest } from './authenticated-request'
 import { clearToken, getClients, isAuthError } from './client'
-import { mapMantisIssue } from './mantis-issue-mapping'
-import { fetchAllIssuePages } from './mantis-record-pages'
+import { mapMantisBTIssue } from './mantisbt-issue-mapping'
+import { fetchAllIssuePages } from './mantisbt-record-pages'
 import {
   evictSiteTokenSafely,
   shouldSurfaceSiteFailure,
-  withMantisDeadline
-} from './mantis-read-failure'
+  withMantisBTDeadline
+} from './mantisbt-read-failure'
 import { toViewer } from './site-identity'
-import type { MantisReadFailure } from './mantis-read-failure'
+import type { MantisBTReadFailure } from './mantisbt-read-failure'
 
 const ISSUE_SEARCH_TIMEOUT_MS = 30_000
 
@@ -20,31 +24,33 @@ function clampLimit(limit: number | undefined, fallback = 30): number {
 }
 
 export async function listIssues(
-  filter: MantisIssueFilter = 'assigned',
+  filter: MantisBTIssueFilter = 'assigned',
   limit = 30,
-  siteId?: MantisSiteSelection | null,
+  siteId?: MantisBTSiteSelection | null,
   signal?: AbortSignal
-): Promise<MantisIssue[]> {
+): Promise<MantisBTIssue[]> {
   const entries = getClients(siteId)
   if (entries.length === 0) {
     return []
   }
   const safeLimit = clampLimit(limit)
   const surfaceSiteFailure = shouldSurfaceSiteFailure(siteId, entries.length)
-  const failures: (MantisReadFailure | undefined)[] = Array.from({ length: entries.length })
-  const results = await withMantisDeadline(signal, ISSUE_SEARCH_TIMEOUT_MS, (requestSignal) =>
+  const failures: (MantisBTReadFailure | undefined)[] = Array.from({ length: entries.length })
+  const results = await withMantisBTDeadline(signal, ISSUE_SEARCH_TIMEOUT_MS, (requestSignal) =>
     Promise.all(
-      entries.map(async (entry, index): Promise<MantisIssue[]> => {
+      entries.map(async (entry, index): Promise<MantisBTIssue[]> => {
         await acquire(requestSignal)
         try {
-          // Mantis's REST API has no server-side handler_id/reporter_id filter, so
+          // MantisBT's REST API has no server-side handler_id/reporter_id filter, so
           // 'assigned'/'reported' resolve the viewer's numeric id once per site here
           // and filter the fetched page client-side below.
           const viewerId =
             filter === 'all'
               ? null
               : toViewer(
-                  await mantisRequest(entry, `${apiBasePath()}/users/me`, { signal: requestSignal })
+                  await mantisBTRequest(entry, `${apiBasePath()}/users/me`, {
+                    signal: requestSignal
+                  })
                 ).id
           const records = await fetchAllIssuePages(
             entry,
@@ -58,7 +64,7 @@ export async function listIssues(
             50,
             requestSignal
           )
-          const issues = records.map((record) => mapMantisIssue(entry.site, record))
+          const issues = records.map((record) => mapMantisBTIssue(entry.site, record))
           if (filter === 'assigned') {
             return issues.filter((issue) => issue.handler?.id === viewerId)
           }
@@ -78,7 +84,7 @@ export async function listIssues(
           if (surfaceSiteFailure) {
             throw error
           }
-          console.warn('[mantis] listIssues failed:', error)
+          console.warn('[mantisBT] listIssues failed:', error)
           failures[index] = { error, auth: authFailure }
           return []
         } finally {
@@ -90,7 +96,7 @@ export async function listIssues(
   // 'all' fan-out: only surface an error when every connected site failed, so a
   // partial success (or a genuinely empty result) is not reported as an error.
   const recordedFailures = failures.filter(
-    (failure): failure is MantisReadFailure => failure !== undefined
+    (failure): failure is MantisBTReadFailure => failure !== undefined
   )
   if (recordedFailures.length === entries.length && entries.length > 0) {
     throw (recordedFailures.find((failure) => !failure.auth) ?? recordedFailures[0]).error

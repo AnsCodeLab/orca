@@ -1,21 +1,21 @@
 import { createHash } from 'node:crypto'
-import type { MantisSite, MantisViewer } from '../../shared/mantis-types'
-import { asRecord } from './mantis-record-pages'
+import type { MantisBTSite, MantisBTViewer } from '../../shared/mantisbt-types'
+import { asRecord } from './mantisbt-record-pages'
 
 const LOOPBACK_HOSTNAMES: Record<string, true> = { localhost: true, '127.0.0.1': true, '::1': true }
 
-export function normalizeMantisSiteUrl(siteUrl: string): string {
+export function normalizeMantisBTSiteUrl(siteUrl: string): string {
   const trimmed = siteUrl.trim()
   const withProtocol = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
   const url = new URL(withProtocol)
   // Why: the API token goes out as a bearer header on every request (CWE-319);
   // only a loopback host is exempted, for local development against a
-  // Mantis instance run on the same machine.
+  // MantisBT instance run on the same machine.
   if (
     url.protocol !== 'https:' &&
     !(url.protocol === 'http:' && LOOPBACK_HOSTNAMES[url.hostname])
   ) {
-    throw new Error('Enter an HTTPS Mantis site URL (HTTP is only allowed for localhost).')
+    throw new Error('Enter an HTTPS MantisBT site URL (HTTP is only allowed for localhost).')
   }
   url.pathname = url.pathname.replace(/\/+$/, '')
   url.search = ''
@@ -33,7 +33,7 @@ export function getSiteId(siteUrl: string, userId: string): string {
 // `/users/username/{username}`. Accept all three shapes defensively so a
 // caller that reuses this helper for another endpoint (or a deployment that
 // deviates from stock MantisBT) still resolves correctly.
-function extractMantisUser(data: Record<string, unknown>): Record<string, unknown> {
+function extractMantisBTUser(data: Record<string, unknown>): Record<string, unknown> {
   if (data.user && typeof data.user === 'object') {
     return asRecord(data.user)
   }
@@ -44,8 +44,8 @@ function extractMantisUser(data: Record<string, unknown>): Record<string, unknow
   return data
 }
 
-export function toViewer(data: unknown): MantisViewer {
-  const user = extractMantisUser(asRecord(data))
+export function toViewer(data: unknown): MantisBTViewer {
+  const user = extractMantisBTUser(asRecord(data))
   const id =
     typeof user.id === 'number' ? String(user.id) : typeof user.id === 'string' ? user.id : ''
   const username =
@@ -62,7 +62,7 @@ export function toViewer(data: unknown): MantisViewer {
   }
 }
 
-export function siteToViewer(site: MantisSite | null): MantisViewer | null {
+export function siteToViewer(site: MantisBTSite | null): MantisBTViewer | null {
   if (!site) {
     return null
   }

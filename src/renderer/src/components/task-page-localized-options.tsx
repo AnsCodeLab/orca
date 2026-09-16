@@ -2,6 +2,7 @@ import React from 'react'
 import { Github, Gitlab, LayoutGrid, List } from 'lucide-react'
 
 import { JiraIcon } from '@/components/icons/JiraIcon'
+import { MantisBTIcon } from '@/components/icons/MantisBTIcon'
 import { createLocalizedCatalog } from '@/i18n/localized-catalog'
 import { translate } from '@/i18n/i18n'
 import {
@@ -131,6 +132,16 @@ export const getSourceOptions = createLocalizedCatalog((): SourceOption[] => [
     id: 'jira',
     label: translate('auto.components.TaskPage.9cd11ba218', 'Jira'),
     Icon: ({ className }) => <JiraIcon className={className} />
+  },
+  {
+    id: 'mantisBT',
+    label: translate('auto.components.TaskPage.mantisbtSourceLabel', 'MantisBT'),
+    Icon: ({ className }) => <MantisBTIcon className={className} />,
+    // Why: MantisBT is connectable from Settings but issue browsing here is a
+    // separate follow-up (see task-page/mantisbt/Content.tsx) — shown, not
+    // hidden, so the tab honestly reflects "connected, not browsable yet"
+    // instead of just disappearing.
+    disabled: true
   }
 ])
 

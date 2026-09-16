@@ -1,15 +1,15 @@
 import { ensureElectronProxyFromEnvironment } from '../network/proxy-settings'
 import { getMainHttpClient } from '../network/http-client'
 import { withSpan } from '../observability/tracer'
-import type { MantisSite } from '../../shared/mantis-types'
+import type { MantisBTSite } from '../../shared/mantisbt-types'
 
 // Why: matches Jira's authenticated-request.ts choice of a non-browser
 // User-Agent — Electron's net.fetch otherwise sends a Chrome UA, and some
 // MantisBT deployments sit behind reverse-proxy rules keyed on it.
-const MANTIS_API_USER_AGENT = 'Orca'
+const MANTISBT_API_USER_AGENT = 'Orca'
 
-export type MantisClientForSite = {
-  site: MantisSite
+export type MantisBTClientForSite = {
+  site: MantisBTSite
   authorization: string
 }
 
@@ -17,7 +17,7 @@ export function apiBasePath(): string {
   return '/api/rest'
 }
 
-export class MantisApiError extends Error {
+export class MantisBTApiError extends Error {
   status: number | null
 
   constructor(message: string, status: number | null = null) {
@@ -43,18 +43,18 @@ function describeErrorCause(error: unknown): string | undefined {
   return cause === undefined ? undefined : String(cause)
 }
 
-async function mantisFetch(url: string, init: RequestInit): Promise<Response> {
+async function mantisBTFetch(url: string, init: RequestInit): Promise<Response> {
   return withSpan(
-    'mantis.request',
+    'mantisBT.request',
     async (span) => {
-      span.setAttribute('mantis.siteUrl', new URL(url).origin)
+      span.setAttribute('mantisBT.siteUrl', new URL(url).origin)
       const httpClient = getMainHttpClient()
       const proxySession = httpClient.proxySession()
       await ensureElectronProxyFromEnvironment({
         ...(proxySession ? { proxySession } : {}),
         probeUrl: url
       }).catch((error) => {
-        span.addEvent('mantis.proxySetupFailed', {
+        span.addEvent('mantisBT.proxySetupFailed', {
           errorName: error instanceof Error ? error.name : typeof error,
           errorMessage: error instanceof Error ? error.message : String(error)
         })
@@ -66,16 +66,16 @@ async function mantisFetch(url: string, init: RequestInit): Promise<Response> {
         return await httpClient.fetch(url, init)
       } catch (error) {
         span.setAttribute(
-          'mantis.transportErrorName',
+          'mantisBT.transportErrorName',
           error instanceof Error ? error.name : typeof error
         )
         span.setAttribute(
-          'mantis.transportErrorMessage',
+          'mantisBT.transportErrorMessage',
           error instanceof Error ? error.message : String(error)
         )
         const cause = describeErrorCause(error)
         if (cause) {
-          span.setAttribute('mantis.transportErrorCause', cause)
+          span.setAttribute('mantisBT.transportErrorCause', cause)
         }
         throw error
       }
@@ -93,14 +93,14 @@ export async function requestWithCredentials(
   const headers = new Headers(init?.headers)
   headers.set('Accept', 'application/json')
   headers.set('Content-Type', 'application/json')
-  headers.set('User-Agent', MANTIS_API_USER_AGENT)
+  headers.set('User-Agent', MANTISBT_API_USER_AGENT)
   headers.set('Authorization', authHeader(apiToken))
-  const response = await mantisFetch(`${siteUrl}${path}`, {
+  const response = await mantisBTFetch(`${siteUrl}${path}`, {
     ...init,
     headers
   })
   if (!response.ok) {
-    throw new MantisApiError(await readMantisError(response), response.status)
+    throw new MantisBTApiError(await readMantisBTError(response), response.status)
   }
   if (response.status === 204) {
     return null
@@ -108,7 +108,7 @@ export async function requestWithCredentials(
   return response.json()
 }
 
-async function readMantisError(response: Response): Promise<string> {
+async function readMantisBTError(response: Response): Promise<string> {
   try {
     // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: response.json() returns `any`; `data.message` is read with a truthy check before use.
     const data = (await response.json()) as { message?: string }
@@ -118,25 +118,25 @@ async function readMantisError(response: Response): Promise<string> {
   } catch {
     // Fall through to status text.
   }
-  return response.statusText || `Mantis request failed (${response.status})`
+  return response.statusText || `MantisBT request failed (${response.status})`
 }
 
-export async function mantisRequest<T>(
-  client: MantisClientForSite,
+export async function mantisBTRequest<T>(
+  client: MantisBTClientForSite,
   path: string,
   init?: RequestInit
 ): Promise<T> {
   const headers = new Headers(init?.headers)
   headers.set('Accept', 'application/json')
   headers.set('Content-Type', 'application/json')
-  headers.set('User-Agent', MANTIS_API_USER_AGENT)
+  headers.set('User-Agent', MANTISBT_API_USER_AGENT)
   headers.set('Authorization', client.authorization)
-  const response = await mantisFetch(`${client.site.siteUrl}${path}`, {
+  const response = await mantisBTFetch(`${client.site.siteUrl}${path}`, {
     ...init,
     headers
   })
   if (!response.ok) {
-    throw new MantisApiError(await readMantisError(response), response.status)
+    throw new MantisBTApiError(await readMantisBTError(response), response.status)
   }
   if (response.status === 204) {
     // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: HTTP 204 has no body; every caller's `T` is expected to tolerate null for a no-content response.

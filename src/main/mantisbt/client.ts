@@ -1,11 +1,11 @@
 import { CredentialDecryptionError } from '../integration-credential-file'
 import type {
-  MantisConnectArgs,
-  MantisConnectionStatus,
-  MantisSite,
-  MantisSiteSelection,
-  MantisViewer
-} from '../../shared/mantis-types'
+  MantisBTConnectArgs,
+  MantisBTConnectionStatus,
+  MantisBTSite,
+  MantisBTSiteSelection,
+  MantisBTViewer
+} from '../../shared/mantisbt-types'
 import { acquire, release } from './request-queue'
 import {
   credentialErrors,
@@ -19,14 +19,14 @@ import {
 import {
   apiBasePath,
   authHeader,
-  MantisApiError,
-  mantisRequest,
+  MantisBTApiError,
+  mantisBTRequest,
   requestWithCredentials,
-  type MantisClientForSite
+  type MantisBTClientForSite
 } from './authenticated-request'
-import { getSiteId, normalizeMantisSiteUrl, siteToViewer, toViewer } from './site-identity'
+import { getSiteId, normalizeMantisBTSiteUrl, siteToViewer, toViewer } from './site-identity'
 
-export function getClients(selection?: MantisSiteSelection | null): MantisClientForSite[] {
+export function getClients(selection?: MantisBTSiteSelection | null): MantisBTClientForSite[] {
   const file = getSiteFile()
   const selected = selection ?? file.selectedSiteId ?? file.activeSiteId
   const isAllSelection = selected === 'all'
@@ -53,7 +53,7 @@ export function getClients(selection?: MantisSiteSelection | null): MantisClient
   })
 }
 
-export function getStatus(): MantisConnectionStatus {
+export function getStatus(): MantisBTConnectionStatus {
   const file = getSiteFile()
   const sites = file.sites.filter((site) => hasStoredToken(site.id))
   const activeSite = sites.find((site) => site.id === file.activeSiteId) ?? sites[0] ?? null
@@ -71,15 +71,15 @@ export function getStatus(): MantisConnectionStatus {
 }
 
 export async function connect(
-  args: MantisConnectArgs
-): Promise<{ ok: true; viewer: MantisViewer } | { ok: false; error: string }> {
+  args: MantisBTConnectArgs
+): Promise<{ ok: true; viewer: MantisBTViewer } | { ok: false; error: string }> {
   let siteUrl: string
   try {
-    siteUrl = normalizeMantisSiteUrl(args.siteUrl)
+    siteUrl = normalizeMantisBTSiteUrl(args.siteUrl)
   } catch (error) {
     return {
       ok: false,
-      error: error instanceof Error ? error.message : 'Enter a valid Mantis site URL.'
+      error: error instanceof Error ? error.message : 'Enter a valid MantisBT site URL.'
     }
   }
 
@@ -94,7 +94,7 @@ export async function connect(
       await requestWithCredentials(siteUrl, apiToken, `${apiBasePath()}/users/me`)
     )
     const id = getSiteId(siteUrl, viewer.id)
-    const site: MantisSite = {
+    const site: MantisBTSite = {
       id,
       siteUrl,
       userId: viewer.id,
@@ -141,11 +141,11 @@ export function disconnect(siteId?: string): void {
   if (firstFailure !== undefined) {
     throw firstFailure instanceof Error
       ? firstFailure
-      : new Error('Failed to remove one or more Mantis credentials.')
+      : new Error('Failed to remove one or more MantisBT credentials.')
   }
 }
 
-export function selectSite(siteId: MantisSiteSelection): MantisConnectionStatus {
+export function selectSite(siteId: MantisBTSiteSelection): MantisBTConnectionStatus {
   const file = getSiteFile()
   if (siteId !== 'all' && !file.sites.some((site) => site.id === siteId)) {
     return getStatus()
@@ -160,26 +160,26 @@ export function selectSite(siteId: MantisSiteSelection): MantisConnectionStatus 
 
 export async function testConnection(
   siteId?: string
-): Promise<{ ok: true; viewer: MantisViewer } | { ok: false; error: string }> {
-  let client: MantisClientForSite | undefined
+): Promise<{ ok: true; viewer: MantisBTViewer } | { ok: false; error: string }> {
+  let client: MantisBTClientForSite | undefined
   try {
     client = getClients(siteId)[0]
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : 'Connection failed.' }
   }
   if (!client) {
-    return { ok: false, error: 'Not connected to Mantis.' }
+    return { ok: false, error: 'Not connected to MantisBT.' }
   }
   await acquire()
   try {
-    const viewer = toViewer(await mantisRequest(client, `${apiBasePath()}/users/me`))
+    const viewer = toViewer(await mantisBTRequest(client, `${apiBasePath()}/users/me`))
     return { ok: true, viewer }
   } catch (error) {
     if (isAuthError(error)) {
       try {
         clearToken(client.site.id)
       } catch (evictionError) {
-        console.warn('[mantis] failed to evict invalid token:', evictionError)
+        console.warn('[mantisBT] failed to evict invalid token:', evictionError)
       }
     }
     return { ok: false, error: error instanceof Error ? error.message : 'Connection failed.' }
@@ -195,5 +195,5 @@ export function clearToken(siteId: string): void {
 }
 
 export function isAuthError(error: unknown): boolean {
-  return error instanceof MantisApiError && error.status === 401
+  return error instanceof MantisBTApiError && error.status === 401
 }

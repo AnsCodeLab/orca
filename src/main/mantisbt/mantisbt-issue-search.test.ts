@@ -24,18 +24,18 @@ function tokenPathForSite(siteId: string): string {
   return join(
     tempHome,
     '.orca',
-    'mantis-tokens',
+    'mantisBT-tokens',
     `${Buffer.from(siteId).toString('base64url')}.enc`
   )
 }
 
-function writeMantisSites(
+function writeMantisBTSites(
   sites: { id: string; siteUrl: string; userId: string; token: string }[]
 ): void {
   const orcaDir = join(tempHome, '.orca')
-  mkdirSync(join(orcaDir, 'mantis-tokens'), { recursive: true })
+  mkdirSync(join(orcaDir, 'mantisBT-tokens'), { recursive: true })
   writeFileSync(
-    join(orcaDir, 'mantis-sites.json'),
+    join(orcaDir, 'mantisBT-sites.json'),
     JSON.stringify(
       {
         version: 1,
@@ -99,7 +99,7 @@ async function loadSearchModule() {
   const { setMainHttpClient } = await import('../network/http-client')
   setMainHttpClient({
     fetch: (url, init) => netFetchMock(url, init),
-    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the fixture implements only resolveProxy/setProxy, the two proxySession operations mantisFetch calls.
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the fixture implements only resolveProxy/setProxy, the two proxySession operations mantisBTFetch calls.
     proxySession: () => ({ resolveProxy: resolveProxyMock, setProxy: setProxyMock }) as never
   })
   const { setSecretStore } = await import('../../shared/secret-store')
@@ -114,12 +114,15 @@ async function loadSearchModule() {
     return { ...actual, homedir: () => tempHome }
   })
 
-  const [client, search] = await Promise.all([import('./client'), import('./mantis-issue-search')])
+  const [client, search] = await Promise.all([
+    import('./client'),
+    import('./mantisbt-issue-search')
+  ])
   return { ...client, ...search }
 }
 
 beforeEach(() => {
-  tempHome = mkdtempLike('orca-mantis-search-')
+  tempHome = mkdtempLike('orca-mantisBT-search-')
   netFetchMock.mockReset()
   resolveProxyMock.mockReset()
   setProxyMock.mockReset()
@@ -136,10 +139,10 @@ afterEach(() => {
   globalThis.fetch = OLD_FETCH
 })
 
-describe('Mantis listIssues', () => {
+describe('MantisBT listIssues', () => {
   it('filters to issues whose handler matches the resolved viewer id', async () => {
-    writeMantisSites([
-      { id: 'site-a', siteUrl: 'https://mantis.example.com', userId: '42', token: 'token-a' }
+    writeMantisBTSites([
+      { id: 'site-a', siteUrl: 'https://mantisbt.example.com', userId: '42', token: 'token-a' }
     ])
     netFetchMock.mockImplementation(async (url: string) => {
       if (url.includes('/users/me')) {
@@ -152,16 +155,16 @@ describe('Mantis listIssues', () => {
         ]
       })
     })
-    const mantis = await loadSearchModule()
+    const mantisBT = await loadSearchModule()
 
-    const issues = await mantis.listIssues('assigned', 30, 'site-a')
+    const issues = await mantisBT.listIssues('assigned', 30, 'site-a')
 
     expect(issues.map((issue) => issue.id)).toEqual(['1'])
   })
 
   it('filters to issues whose reporter matches the resolved viewer id', async () => {
-    writeMantisSites([
-      { id: 'site-a', siteUrl: 'https://mantis.example.com', userId: '42', token: 'token-a' }
+    writeMantisBTSites([
+      { id: 'site-a', siteUrl: 'https://mantisbt.example.com', userId: '42', token: 'token-a' }
     ])
     netFetchMock.mockImplementation(async (url: string) => {
       if (url.includes('/users/me')) {
@@ -174,16 +177,16 @@ describe('Mantis listIssues', () => {
         ]
       })
     })
-    const mantis = await loadSearchModule()
+    const mantisBT = await loadSearchModule()
 
-    const issues = await mantis.listIssues('reported', 30, 'site-a')
+    const issues = await mantisBT.listIssues('reported', 30, 'site-a')
 
     expect(issues.map((issue) => issue.id)).toEqual(['1'])
   })
 
   it('returns every issue regardless of handler when filter is all', async () => {
-    writeMantisSites([
-      { id: 'site-a', siteUrl: 'https://mantis.example.com', userId: '42', token: 'token-a' }
+    writeMantisBTSites([
+      { id: 'site-a', siteUrl: 'https://mantisbt.example.com', userId: '42', token: 'token-a' }
     ])
     netFetchMock.mockImplementation(async (url: string) => {
       expect(url).not.toContain('/users/me')
@@ -194,16 +197,16 @@ describe('Mantis listIssues', () => {
         ]
       })
     })
-    const mantis = await loadSearchModule()
+    const mantisBT = await loadSearchModule()
 
-    const issues = await mantis.listIssues('all', 30, 'site-a')
+    const issues = await mantisBT.listIssues('all', 30, 'site-a')
 
     expect(issues.map((issue) => issue.id).sort()).toEqual(['1', '2'])
   })
 
   it('walks multiple pages until a short page is returned', async () => {
-    writeMantisSites([
-      { id: 'site-a', siteUrl: 'https://mantis.example.com', userId: '42', token: 'token-a' }
+    writeMantisBTSites([
+      { id: 'site-a', siteUrl: 'https://mantisbt.example.com', userId: '42', token: 'token-a' }
     ])
     const page1 = Array.from({ length: 50 }, (_, index) =>
       makeIssueRecord(index + 1, null, '2024-01-01T00:00:00.000Z')
@@ -217,16 +220,16 @@ describe('Mantis listIssues', () => {
       }
       return jsonResponse({ issues: page1 })
     })
-    const mantis = await loadSearchModule()
+    const mantisBT = await loadSearchModule()
 
-    const issues = await mantis.listIssues('all', 100, 'site-a')
+    const issues = await mantisBT.listIssues('all', 100, 'site-a')
 
     expect(issues).toHaveLength(53)
     expect(netFetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('evicts only the failing site token on a 401 and still returns the healthy site issues', async () => {
-    writeMantisSites([
+    writeMantisBTSites([
       {
         id: 'alpha',
         siteUrl: 'https://alpha.example.com',
@@ -241,40 +244,40 @@ describe('Mantis listIssues', () => {
       }
       return jsonResponse({ issues: [makeIssueRecord(1, null, '2024-01-01T00:00:00.000Z')] })
     })
-    const mantis = await loadSearchModule()
+    const mantisBT = await loadSearchModule()
 
-    const issues = await mantis.listIssues('all', 30, 'all')
+    const issues = await mantisBT.listIssues('all', 30, 'all')
 
     expect(issues).toHaveLength(1)
     expect(issues[0]?.siteId).toBe('alpha')
     expect(existsSync(tokenPathForSite('beta'))).toBe(false)
-    expect(mantis.getStatus().sites.map((site) => site.id)).toEqual(['alpha'])
+    expect(mantisBT.getStatus().sites.map((site) => site.id)).toEqual(['alpha'])
   })
 
   it('throws for a specific single-site selection when that site returns a 500', async () => {
-    writeMantisSites([
-      { id: 'site-a', siteUrl: 'https://mantis.example.com', userId: '42', token: 'token-a' }
+    writeMantisBTSites([
+      { id: 'site-a', siteUrl: 'https://mantisbt.example.com', userId: '42', token: 'token-a' }
     ])
     netFetchMock.mockImplementation(async () => jsonResponse({ message: 'Internal error' }, 500))
-    const mantis = await loadSearchModule()
+    const mantisBT = await loadSearchModule()
 
-    await expect(mantis.listIssues('all', 30, 'site-a')).rejects.toThrow('Internal error')
+    await expect(mantisBT.listIssues('all', 30, 'site-a')).rejects.toThrow('Internal error')
   })
 
   it('throws when every connected site fails under an all selection', async () => {
-    writeMantisSites([
+    writeMantisBTSites([
       { id: 'alpha', siteUrl: 'https://alpha.example.com', userId: 'user-alpha', token: 'token-a' },
       { id: 'beta', siteUrl: 'https://beta.example.com', userId: 'user-beta', token: 'token-b' }
     ])
     netFetchMock.mockImplementation(async () => jsonResponse({ message: 'Internal error' }, 500))
-    const mantis = await loadSearchModule()
+    const mantisBT = await loadSearchModule()
 
-    await expect(mantis.listIssues('all', 30, 'all')).rejects.toThrow('Internal error')
+    await expect(mantisBT.listIssues('all', 30, 'all')).rejects.toThrow('Internal error')
   })
 
-  it('throws MantisPaginationLimitError instead of silently truncating a huge result set', async () => {
-    writeMantisSites([
-      { id: 'site-a', siteUrl: 'https://mantis.example.com', userId: '42', token: 'token-a' }
+  it('throws MantisBTPaginationLimitError instead of silently truncating a huge result set', async () => {
+    writeMantisBTSites([
+      { id: 'site-a', siteUrl: 'https://mantisbt.example.com', userId: '42', token: 'token-a' }
     ])
     // Every page comes back full (50 items), so the server never signals the
     // end of the list — this must trip the pagination safety guard.
@@ -285,8 +288,10 @@ describe('Mantis listIssues', () => {
         )
       })
     )
-    const mantis = await loadSearchModule()
+    const mantisBT = await loadSearchModule()
 
-    await expect(mantis.listIssues('all', 30, 'site-a')).rejects.toThrow(/pagination safety limit/)
+    await expect(mantisBT.listIssues('all', 30, 'site-a')).rejects.toThrow(
+      /pagination safety limit/
+    )
   })
 })

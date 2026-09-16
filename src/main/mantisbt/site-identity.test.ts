@@ -1,29 +1,29 @@
 import { describe, expect, it } from 'vitest'
-import { getSiteId, normalizeMantisSiteUrl, siteToViewer, toViewer } from './site-identity'
+import { getSiteId, normalizeMantisBTSiteUrl, siteToViewer, toViewer } from './site-identity'
 
-describe('normalizeMantisSiteUrl', () => {
+describe('normalizeMantisBTSiteUrl', () => {
   it('defaults to https and strips trailing slash, query, and hash', () => {
-    expect(normalizeMantisSiteUrl('mantis.example.com/')).toBe('https://mantis.example.com')
-    expect(normalizeMantisSiteUrl('https://mantis.example.com/base/?x=1#y')).toBe(
-      'https://mantis.example.com/base'
+    expect(normalizeMantisBTSiteUrl('mantisbt.example.com/')).toBe('https://mantisbt.example.com')
+    expect(normalizeMantisBTSiteUrl('https://mantisbt.example.com/base/?x=1#y')).toBe(
+      'https://mantisbt.example.com/base'
     )
   })
 
   it('rejects an explicit http:// site URL', () => {
-    expect(() => normalizeMantisSiteUrl('http://mantis.example.com')).toThrow(/HTTPS/)
+    expect(() => normalizeMantisBTSiteUrl('http://mantisbt.example.com')).toThrow(/HTTPS/)
   })
 
   it('allows http:// only for loopback hosts', () => {
-    expect(normalizeMantisSiteUrl('http://localhost:8080')).toBe('http://localhost:8080')
-    expect(normalizeMantisSiteUrl('http://127.0.0.1:8080')).toBe('http://127.0.0.1:8080')
+    expect(normalizeMantisBTSiteUrl('http://localhost:8080')).toBe('http://localhost:8080')
+    expect(normalizeMantisBTSiteUrl('http://127.0.0.1:8080')).toBe('http://127.0.0.1:8080')
   })
 })
 
 describe('getSiteId', () => {
   it('is stable for the same inputs and differs across users on the same site', () => {
-    const a = getSiteId('https://mantis.example.com', '42')
-    const b = getSiteId('https://mantis.example.com', '42')
-    const c = getSiteId('https://mantis.example.com', '99')
+    const a = getSiteId('https://mantisbt.example.com', '42')
+    const b = getSiteId('https://mantisbt.example.com', '42')
+    const c = getSiteId('https://mantisbt.example.com', '99')
     expect(a).toBe(b)
     expect(a).not.toBe(c)
   })
@@ -65,7 +65,7 @@ describe('siteToViewer', () => {
     expect(
       siteToViewer({
         id: 'site-1',
-        siteUrl: 'https://mantis.example.com',
+        siteUrl: 'https://mantisbt.example.com',
         userId: '42',
         displayName: 'William'
       })

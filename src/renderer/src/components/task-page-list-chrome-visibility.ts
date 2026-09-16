@@ -30,5 +30,9 @@ export function shouldHideTaskPageListChrome({
       return hasJiraDetail
     case 'linear':
       return hasLinearIssueDetail || hasLinearProjectContext || hasLinearViewContext
+    // Why: MantisBT has no TaskPage detail view yet (connect-only in this phase), so
+    // there is no detail state that could conflict with the list chrome.
+    case 'mantisBT':
+      return false
   }
 }

@@ -24,18 +24,18 @@ function tokenPathForSite(siteId: string): string {
   return join(
     tempHome,
     '.orca',
-    'mantis-tokens',
+    'mantisBT-tokens',
     `${Buffer.from(siteId).toString('base64url')}.enc`
   )
 }
 
-function writeMantisSites(
+function writeMantisBTSites(
   sites: { id: string; siteUrl: string; userId: string; token: string }[]
 ): void {
   const orcaDir = join(tempHome, '.orca')
-  mkdirSync(join(orcaDir, 'mantis-tokens'), { recursive: true })
+  mkdirSync(join(orcaDir, 'mantisBT-tokens'), { recursive: true })
   writeFileSync(
-    join(orcaDir, 'mantis-sites.json'),
+    join(orcaDir, 'mantisBT-sites.json'),
     JSON.stringify(
       {
         version: 1,
@@ -94,7 +94,7 @@ async function loadIssueReadModule() {
   const { setMainHttpClient } = await import('../network/http-client')
   setMainHttpClient({
     fetch: (url, init) => netFetchMock(url, init),
-    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the fixture implements only resolveProxy/setProxy, the two proxySession operations mantisFetch calls.
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the fixture implements only resolveProxy/setProxy, the two proxySession operations mantisBTFetch calls.
     proxySession: () => ({ resolveProxy: resolveProxyMock, setProxy: setProxyMock }) as never
   })
   const { setSecretStore } = await import('../../shared/secret-store')
@@ -109,12 +109,15 @@ async function loadIssueReadModule() {
     return { ...actual, homedir: () => tempHome }
   })
 
-  const [client, issueRead] = await Promise.all([import('./client'), import('./mantis-issue-read')])
+  const [client, issueRead] = await Promise.all([
+    import('./client'),
+    import('./mantisbt-issue-read')
+  ])
   return { ...client, ...issueRead }
 }
 
 beforeEach(() => {
-  tempHome = mkdtempLike('orca-mantis-issue-read-')
+  tempHome = mkdtempLike('orca-mantisBT-issue-read-')
   netFetchMock.mockReset()
   resolveProxyMock.mockReset()
   setProxyMock.mockReset()
@@ -131,15 +134,15 @@ afterEach(() => {
   globalThis.fetch = OLD_FETCH
 })
 
-describe('Mantis getIssue', () => {
+describe('MantisBT getIssue', () => {
   it('finds and maps the issue from the first site that has it', async () => {
-    writeMantisSites([
+    writeMantisBTSites([
       { id: 'site-a', siteUrl: 'https://alpha.example.com', userId: 'user-a', token: 'token-a' }
     ])
     netFetchMock.mockImplementation(async () => jsonResponse({ issues: [makeIssueRecord(1)] }))
-    const mantis = await loadIssueReadModule()
+    const mantisBT = await loadIssueReadModule()
 
-    const issue = await mantis.getIssue('1', 'site-a')
+    const issue = await mantisBT.getIssue('1', 'site-a')
 
     expect(issue?.id).toBe('1')
     expect(issue?.summary).toBe('Issue 1')
@@ -147,7 +150,7 @@ describe('Mantis getIssue', () => {
   })
 
   it('tries the next site when the first returns 404, and finds it there', async () => {
-    writeMantisSites([
+    writeMantisBTSites([
       { id: 'alpha', siteUrl: 'https://alpha.example.com', userId: 'user-a', token: 'token-a' },
       { id: 'beta', siteUrl: 'https://beta.example.com', userId: 'user-b', token: 'token-b' }
     ])
@@ -157,41 +160,41 @@ describe('Mantis getIssue', () => {
       }
       return jsonResponse({ issues: [makeIssueRecord(1)] })
     })
-    const mantis = await loadIssueReadModule()
+    const mantisBT = await loadIssueReadModule()
 
-    const issue = await mantis.getIssue('1', 'all')
+    const issue = await mantisBT.getIssue('1', 'all')
 
     expect(issue?.id).toBe('1')
     expect(issue?.siteId).toBe('beta')
   })
 
   it('returns null when every connected site cleanly 404s', async () => {
-    writeMantisSites([
+    writeMantisBTSites([
       { id: 'alpha', siteUrl: 'https://alpha.example.com', userId: 'user-a', token: 'token-a' },
       { id: 'beta', siteUrl: 'https://beta.example.com', userId: 'user-b', token: 'token-b' }
     ])
     netFetchMock.mockImplementation(async () => jsonResponse({ message: 'Not found' }, 404))
-    const mantis = await loadIssueReadModule()
+    const mantisBT = await loadIssueReadModule()
 
-    const issue = await mantis.getIssue('1', 'all')
+    const issue = await mantisBT.getIssue('1', 'all')
 
     expect(issue).toBeNull()
   })
 
   it('throws immediately for a specific single-site selection on a non-404, non-auth error', async () => {
-    writeMantisSites([
+    writeMantisBTSites([
       { id: 'site-a', siteUrl: 'https://alpha.example.com', userId: 'user-a', token: 'token-a' }
     ])
     netFetchMock.mockImplementation(async () =>
       jsonResponse({ message: 'Database unavailable' }, 500)
     )
-    const mantis = await loadIssueReadModule()
+    const mantisBT = await loadIssueReadModule()
 
-    await expect(mantis.getIssue('1', 'site-a')).rejects.toThrow('Database unavailable')
+    await expect(mantisBT.getIssue('1', 'site-a')).rejects.toThrow('Database unavailable')
   })
 
   it("throws rather than returning null when one 'all' site 404s cleanly and the other genuinely fails", async () => {
-    writeMantisSites([
+    writeMantisBTSites([
       { id: 'alpha', siteUrl: 'https://alpha.example.com', userId: 'user-a', token: 'token-a' },
       { id: 'beta', siteUrl: 'https://beta.example.com', userId: 'user-b', token: 'token-b' }
     ])
@@ -201,13 +204,13 @@ describe('Mantis getIssue', () => {
       }
       return jsonResponse({ message: 'Site beta exploded' }, 500)
     })
-    const mantis = await loadIssueReadModule()
+    const mantisBT = await loadIssueReadModule()
 
-    await expect(mantis.getIssue('1', 'all')).rejects.toThrow('Site beta exploded')
+    await expect(mantisBT.getIssue('1', 'all')).rejects.toThrow('Site beta exploded')
   })
 
   it('evicts only the failing site token on a 401 and still finds the issue on the healthy site', async () => {
-    writeMantisSites([
+    writeMantisBTSites([
       { id: 'beta', siteUrl: 'https://beta.example.com', userId: 'user-b', token: 'token-b' },
       { id: 'alpha', siteUrl: 'https://alpha.example.com', userId: 'user-a', token: 'token-a' }
     ])
@@ -217,13 +220,13 @@ describe('Mantis getIssue', () => {
       }
       return jsonResponse({ issues: [makeIssueRecord(1)] })
     })
-    const mantis = await loadIssueReadModule()
+    const mantisBT = await loadIssueReadModule()
 
-    const issue = await mantis.getIssue('1', 'all')
+    const issue = await mantisBT.getIssue('1', 'all')
 
     expect(issue?.id).toBe('1')
     expect(issue?.siteId).toBe('alpha')
     expect(existsSync(tokenPathForSite('beta'))).toBe(false)
-    expect(mantis.getStatus().sites.map((site) => site.id)).toEqual(['alpha'])
+    expect(mantisBT.getStatus().sites.map((site) => site.id)).toEqual(['alpha'])
   })
 })

@@ -26,7 +26,7 @@ type SafeStorageMockOptions = {
   decryptString?: (value: Buffer) => string
 }
 
-type MantisSiteFixture = {
+type MantisBTSiteFixture = {
   siteUrl?: string
   userId?: string
   displayName?: string
@@ -43,20 +43,20 @@ function tokenPathForSite(siteId: string): string {
   return join(
     tempHome,
     '.orca',
-    'mantis-tokens',
+    'mantisBT-tokens',
     `${Buffer.from(siteId).toString('base64url')}.enc`
   )
 }
 
-function writeMantisFiles(
+function writeMantisBTFiles(
   siteId: string,
   token: string | Buffer,
-  fixture: MantisSiteFixture = {}
+  fixture: MantisBTSiteFixture = {}
 ): void {
   const orcaDir = join(tempHome, '.orca')
-  mkdirSync(join(orcaDir, 'mantis-tokens'), { recursive: true })
+  mkdirSync(join(orcaDir, 'mantisBT-tokens'), { recursive: true })
   writeFileSync(
-    join(orcaDir, 'mantis-sites.json'),
+    join(orcaDir, 'mantisBT-sites.json'),
     JSON.stringify(
       {
         version: 1,
@@ -65,7 +65,7 @@ function writeMantisFiles(
         sites: [
           {
             id: siteId,
-            siteUrl: fixture.siteUrl ?? 'https://mantis.example.com',
+            siteUrl: fixture.siteUrl ?? 'https://mantisbt.example.com',
             userId: fixture.userId ?? '42',
             displayName: fixture.displayName ?? 'William'
           }
@@ -84,9 +84,9 @@ function writeMultiSiteFiles(
   selectedSiteId: string
 ): void {
   const orcaDir = join(tempHome, '.orca')
-  mkdirSync(join(orcaDir, 'mantis-tokens'), { recursive: true })
+  mkdirSync(join(orcaDir, 'mantisBT-tokens'), { recursive: true })
   writeFileSync(
-    join(orcaDir, 'mantis-sites.json'),
+    join(orcaDir, 'mantisBT-sites.json'),
     JSON.stringify(
       {
         version: 1,
@@ -126,7 +126,7 @@ async function loadClientModule(options: SafeStorageMockOptions = {}) {
   const { setMainHttpClient } = await import('../network/http-client')
   setMainHttpClient({
     fetch: (url, init) => netFetchMock(url, init),
-    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the fixture implements only resolveProxy/setProxy, the two proxySession operations mantisFetch calls.
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the fixture implements only resolveProxy/setProxy, the two proxySession operations mantisBTFetch calls.
     proxySession: () => ({ resolveProxy: resolveProxyMock, setProxy: setProxyMock }) as never
   })
   const { setSecretStore } = await import('../../shared/secret-store')
@@ -152,7 +152,7 @@ async function loadClientModule(options: SafeStorageMockOptions = {}) {
 }
 
 beforeEach(() => {
-  tempHome = mkdtempLike('orca-mantis-client-')
+  tempHome = mkdtempLike('orca-mantisBT-client-')
   fetchMock = vi.fn(async () => {
     throw new Error('fetch should not be called')
   })
@@ -170,7 +170,7 @@ afterEach(() => {
   globalThis.fetch = OLD_FETCH
 })
 
-describe('Mantis client credential storage', () => {
+describe('MantisBT client credential storage', () => {
   it('connects successfully and persists the site and token', async () => {
     netFetchMock.mockResolvedValueOnce(
       new Response(
@@ -180,10 +180,10 @@ describe('Mantis client credential storage', () => {
         { status: 200, headers: { 'Content-Type': 'application/json' } }
       )
     )
-    const mantis = await loadClientModule({ encryptionAvailable: true })
+    const mantisBT = await loadClientModule({ encryptionAvailable: true })
 
     await expect(
-      mantis.connect({ siteUrl: 'mantis.example.com', apiToken: 'token-alpha' })
+      mantisBT.connect({ siteUrl: 'mantisbt.example.com', apiToken: 'token-alpha' })
     ).resolves.toMatchObject({
       ok: true,
       viewer: { id: '42', displayName: 'William', email: 'william@example.com' }
@@ -191,7 +191,7 @@ describe('Mantis client credential storage', () => {
 
     expect(fetchMock).not.toHaveBeenCalled()
     expect(netFetchMock).toHaveBeenCalledWith(
-      'https://mantis.example.com/api/rest/users/me',
+      'https://mantisbt.example.com/api/rest/users/me',
       expect.objectContaining({ headers: expect.any(Headers) })
     )
     // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: authenticated-request.ts always constructs RequestInit.headers as a Headers instance before calling fetch.
@@ -201,7 +201,7 @@ describe('Mantis client credential storage', () => {
 
     // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: this is exactly the shape writeSiteFile serializes; the assertions below verify the actual field values.
     const stored = JSON.parse(
-      readFileSync(join(tempHome, '.orca', 'mantis-sites.json'), 'utf-8')
+      readFileSync(join(tempHome, '.orca', 'mantisBT-sites.json'), 'utf-8')
     ) as {
       sites: { id: string; userId: string; displayName: string }[]
     }
@@ -221,31 +221,31 @@ describe('Mantis client credential storage', () => {
         headers: { 'Content-Type': 'application/json' }
       })
     )
-    const mantis = await loadClientModule()
+    const mantisBT = await loadClientModule()
 
     await expect(
-      mantis.connect({ siteUrl: 'mantis.example.com', apiToken: 'bad-token' })
+      mantisBT.connect({ siteUrl: 'mantisbt.example.com', apiToken: 'bad-token' })
     ).resolves.toEqual({ ok: false, error: 'Access denied' })
 
     expect(fetchMock).not.toHaveBeenCalled()
-    expect(mantis.getStatus()).toMatchObject({ connected: false })
+    expect(mantisBT.getStatus()).toMatchObject({ connected: false })
   })
 
   it('requires an API token to connect', async () => {
-    const mantis = await loadClientModule()
+    const mantisBT = await loadClientModule()
 
     await expect(
-      mantis.connect({ siteUrl: 'mantis.example.com', apiToken: '  ' })
+      mantisBT.connect({ siteUrl: 'mantisbt.example.com', apiToken: '  ' })
     ).resolves.toEqual({ ok: false, error: 'API token is required.' })
     expect(netFetchMock).not.toHaveBeenCalled()
   })
 
   it('reflects persisted sites in getStatus', async () => {
     const siteId = 'site-alpha'
-    writeMantisFiles(siteId, 'token-alpha')
-    const mantis = await loadClientModule({ encryptionAvailable: true })
+    writeMantisBTFiles(siteId, 'token-alpha')
+    const mantisBT = await loadClientModule({ encryptionAvailable: true })
 
-    expect(mantis.getStatus()).toMatchObject({
+    expect(mantisBT.getStatus()).toMatchObject({
       connected: true,
       activeSiteId: siteId,
       selectedSiteId: siteId,
@@ -257,14 +257,14 @@ describe('Mantis client credential storage', () => {
   it('removes a site token and site-file entry on disconnect', async () => {
     const siteId = 'site-alpha'
     const tokenPath = tokenPathForSite(siteId)
-    writeMantisFiles(siteId, 'token-alpha')
-    const mantis = await loadClientModule({ encryptionAvailable: true })
-    expect(mantis.getStatus().connected).toBe(true)
+    writeMantisBTFiles(siteId, 'token-alpha')
+    const mantisBT = await loadClientModule({ encryptionAvailable: true })
+    expect(mantisBT.getStatus().connected).toBe(true)
 
-    mantis.disconnect(siteId)
+    mantisBT.disconnect(siteId)
 
     expect(existsSync(tokenPath)).toBe(false)
-    expect(mantis.getStatus()).toMatchObject({ connected: false, sites: [] })
+    expect(mantisBT.getStatus()).toMatchObject({ connected: false, sites: [] })
   })
 
   it('supports selectSite and getClients across multiple connected sites', async () => {
@@ -275,86 +275,86 @@ describe('Mantis client credential storage', () => {
       ],
       'alpha'
     )
-    const mantis = await loadClientModule({ encryptionAvailable: true })
+    const mantisBT = await loadClientModule({ encryptionAvailable: true })
 
     expect(
-      mantis
+      mantisBT
         .getClients('all')
         .map((client) => client.site.id)
         .sort()
     ).toEqual(['alpha', 'beta'])
-    expect(mantis.getClients('beta').map((client) => client.site.id)).toEqual(['beta'])
+    expect(mantisBT.getClients('beta').map((client) => client.site.id)).toEqual(['beta'])
 
-    const status = mantis.selectSite('beta')
+    const status = mantisBT.selectSite('beta')
     expect(status.selectedSiteId).toBe('beta')
     expect(status.activeSiteId).toBe('beta')
-    expect(mantis.getClients().map((client) => client.site.id)).toEqual(['beta'])
+    expect(mantisBT.getClients().map((client) => client.site.id)).toEqual(['beta'])
   })
 
   it('clears the token and removes the site on clearToken', async () => {
     const siteId = 'site-alpha'
     const tokenPath = tokenPathForSite(siteId)
-    writeMantisFiles(siteId, 'token-alpha')
-    const mantis = await loadClientModule({ encryptionAvailable: true })
-    expect(mantis.getStatus().connected).toBe(true)
+    writeMantisBTFiles(siteId, 'token-alpha')
+    const mantisBT = await loadClientModule({ encryptionAvailable: true })
+    expect(mantisBT.getStatus().connected).toBe(true)
 
-    mantis.clearToken(siteId)
+    mantisBT.clearToken(siteId)
 
     expect(existsSync(tokenPath)).toBe(false)
-    expect(mantis.getStatus()).toMatchObject({ connected: false, sites: [] })
+    expect(mantisBT.getStatus()).toMatchObject({ connected: false, sites: [] })
   })
 
   it('classifies only 401 responses as auth errors', async () => {
-    const mantis = await loadClientModule()
+    const mantisBT = await loadClientModule()
 
-    expect(mantis.isAuthError(new mantis.MantisApiError('Unauthorized', 401))).toBe(true)
-    expect(mantis.isAuthError(new mantis.MantisApiError('Forbidden', 403))).toBe(false)
-    expect(mantis.isAuthError(new Error('boom'))).toBe(false)
+    expect(mantisBT.isAuthError(new mantisBT.MantisBTApiError('Unauthorized', 401))).toBe(true)
+    expect(mantisBT.isAuthError(new mantisBT.MantisBTApiError('Forbidden', 403))).toBe(false)
+    expect(mantisBT.isAuthError(new Error('boom'))).toBe(false)
   })
 
-  it('does not pass encrypted safeStorage bytes to Mantis when encryption is unavailable', async () => {
+  it('does not pass encrypted safeStorage bytes to MantisBT when encryption is unavailable', async () => {
     const siteId = 'site-alpha'
     const tokenPath = tokenPathForSite(siteId)
-    writeMantisFiles(siteId, Buffer.from([0x76, 0x31, 0x30, 0xff, 0xfe]))
-    const mantis = await loadClientModule({ encryptionAvailable: false })
+    writeMantisBTFiles(siteId, Buffer.from([0x76, 0x31, 0x30, 0xff, 0xfe]))
+    const mantisBT = await loadClientModule({ encryptionAvailable: false })
 
-    await expect(mantis.testConnection(siteId)).resolves.toEqual({
+    await expect(mantisBT.testConnection(siteId)).resolves.toEqual({
       ok: false,
       error:
-        'Could not decrypt saved Mantis credential. Approve Keychain access or reconnect Mantis.'
+        'Could not decrypt saved MantisBT credential. Approve Keychain access or reconnect MantisBT.'
     })
 
     expect(fetchMock).not.toHaveBeenCalled()
     expect(existsSync(tokenPath)).toBe(true)
-    expect(mantis.getStatus()).toMatchObject({
+    expect(mantisBT.getStatus()).toMatchObject({
       connected: true,
       credentialError:
-        'Could not decrypt saved Mantis credential. Approve Keychain access or reconnect Mantis.',
+        'Could not decrypt saved MantisBT credential. Approve Keychain access or reconnect MantisBT.',
       sites: [{ id: siteId }]
     })
   })
 
-  it('bridges proxy environment settings before Mantis connect requests', async () => {
+  it('bridges proxy environment settings before MantisBT connect requests', async () => {
     netFetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ user: { id: 7, name: 'ada', real_name: 'Ada' } }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' }
       })
     )
-    const mantis = await loadClientModule()
+    const mantisBT = await loadClientModule()
 
     await expect(
-      mantis.connect({ siteUrl: 'mantis.example.com', apiToken: 'token-alpha' })
+      mantisBT.connect({ siteUrl: 'mantisbt.example.com', apiToken: 'token-alpha' })
     ).resolves.toMatchObject({ ok: true, viewer: { displayName: 'Ada' } })
 
-    expect(resolveProxyMock).toHaveBeenCalledWith('https://mantis.example.com/api/rest/users/me')
+    expect(resolveProxyMock).toHaveBeenCalledWith('https://mantisbt.example.com/api/rest/users/me')
     expect(netFetchMock).toHaveBeenCalledTimes(1)
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('evicts the token when testConnection receives a 401', async () => {
     const siteId = 'site-alpha'
-    writeMantisFiles(siteId, 'token-alpha')
+    writeMantisBTFiles(siteId, 'token-alpha')
     netFetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ message: 'Access denied' }), {
         status: 401,
@@ -362,27 +362,27 @@ describe('Mantis client credential storage', () => {
         headers: { 'Content-Type': 'application/json' }
       })
     )
-    const mantis = await loadClientModule({ encryptionAvailable: true })
+    const mantisBT = await loadClientModule({ encryptionAvailable: true })
 
-    await expect(mantis.testConnection(siteId)).resolves.toMatchObject({ ok: false })
+    await expect(mantisBT.testConnection(siteId)).resolves.toMatchObject({ ok: false })
 
     expect(existsSync(tokenPathForSite(siteId))).toBe(false)
-    expect(mantis.getStatus()).toMatchObject({ connected: false, sites: [] })
+    expect(mantisBT.getStatus()).toMatchObject({ connected: false, sites: [] })
   })
 
   it('propagates a real deletion failure from disconnect instead of reporting success', async () => {
     const siteId = 'site-alpha'
-    writeMantisFiles(siteId, 'token-alpha')
+    writeMantisBTFiles(siteId, 'token-alpha')
     const tokenPath = tokenPathForSite(siteId)
     // Replace the token file with a directory so unlinkSync fails with
     // EISDIR — a real non-ENOENT deletion failure, distinct from "already
     // gone", that must not be swallowed as a successful disconnect.
     unlinkSync(tokenPath)
     mkdirSync(tokenPath)
-    const mantis = await loadClientModule({ encryptionAvailable: true })
-    expect(mantis.getStatus().connected).toBe(true)
+    const mantisBT = await loadClientModule({ encryptionAvailable: true })
+    expect(mantisBT.getStatus().connected).toBe(true)
 
-    expect(() => mantis.disconnect(siteId)).toThrow()
+    expect(() => mantisBT.disconnect(siteId)).toThrow()
 
     // Deletion genuinely failed — the directory is still there, and the
     // site is not silently reported as disconnected.
@@ -390,13 +390,13 @@ describe('Mantis client credential storage', () => {
   })
 
   it('surfaces the HTTPS-required error message when connecting over plain HTTP', async () => {
-    const mantis = await loadClientModule()
+    const mantisBT = await loadClientModule()
 
     await expect(
-      mantis.connect({ siteUrl: 'http://mantis.example.com', apiToken: 'token-alpha' })
+      mantisBT.connect({ siteUrl: 'http://mantisbt.example.com', apiToken: 'token-alpha' })
     ).resolves.toEqual({
       ok: false,
-      error: 'Enter an HTTPS Mantis site URL (HTTP is only allowed for localhost).'
+      error: 'Enter an HTTPS MantisBT site URL (HTTP is only allowed for localhost).'
     })
     expect(netFetchMock).not.toHaveBeenCalled()
   })

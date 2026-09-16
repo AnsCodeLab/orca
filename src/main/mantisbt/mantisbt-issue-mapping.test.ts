@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import type { MantisSite } from '../../shared/mantis-types'
-import { mapMantisIssue, mapMantisProject } from './mantis-issue-mapping'
+import type { MantisBTSite } from '../../shared/mantisbt-types'
+import { mapMantisBTIssue, mapMantisBTProject } from './mantisbt-issue-mapping'
 
-const site: MantisSite = {
+const site: MantisBTSite = {
   id: 'site-1',
-  siteUrl: 'https://mantis.example.com',
+  siteUrl: 'https://mantisbt.example.com',
   userId: '42',
   displayName: 'William'
 }
 
-describe('mapMantisIssue', () => {
+describe('mapMantisBTIssue', () => {
   it('maps a full raw issue record', () => {
     const raw = {
       id: 123,
@@ -24,7 +24,7 @@ describe('mapMantisIssue', () => {
       updated_at: '2024-02-01T00:00:00.000Z'
     }
 
-    expect(mapMantisIssue(site, raw)).toEqual({
+    expect(mapMantisBTIssue(site, raw)).toEqual({
       id: '123',
       summary: 'Something broke',
       description: 'Detailed repro steps',
@@ -37,7 +37,7 @@ describe('mapMantisIssue', () => {
       updatedAt: '2024-02-01T00:00:00.000Z',
       siteId: 'site-1',
       siteName: 'William',
-      url: 'https://mantis.example.com/view.php?id=123'
+      url: 'https://mantisbt.example.com/view.php?id=123'
     })
   })
 
@@ -52,9 +52,9 @@ describe('mapMantisIssue', () => {
       updated_at: '2024-03-02T00:00:00.000Z'
     }
 
-    let issue: ReturnType<typeof mapMantisIssue> | undefined
+    let issue: ReturnType<typeof mapMantisBTIssue> | undefined
     expect(() => {
-      issue = mapMantisIssue(site, raw)
+      issue = mapMantisBTIssue(site, raw)
     }).not.toThrow()
 
     expect(issue?.description).toBeUndefined()
@@ -75,28 +75,28 @@ describe('mapMantisIssue', () => {
       updated_at: '2024-03-02T00:00:00.000Z'
     }
 
-    expect(mapMantisIssue(site, raw).handler).toBeNull()
+    expect(mapMantisBTIssue(site, raw).handler).toBeNull()
   })
 
   it('falls back to a fresh timestamp when created/updated are absent, rather than throwing', () => {
     const raw = { id: 999, summary: 'No timestamps', project: {}, status: {}, reporter: {} }
 
-    expect(() => mapMantisIssue(site, raw)).not.toThrow()
-    const issue = mapMantisIssue(site, raw)
+    expect(() => mapMantisBTIssue(site, raw)).not.toThrow()
+    const issue = mapMantisBTIssue(site, raw)
     expect(Number.isNaN(new Date(issue.createdAt).getTime())).toBe(false)
     expect(Number.isNaN(new Date(issue.updatedAt).getTime())).toBe(false)
   })
 })
 
-describe('mapMantisProject', () => {
+describe('mapMantisBTProject', () => {
   it('maps id and name defensively, falling back when name is missing', () => {
-    expect(mapMantisProject(site, { id: 5, name: 'Demo' })).toEqual({
+    expect(mapMantisBTProject(site, { id: 5, name: 'Demo' })).toEqual({
       id: '5',
       siteId: 'site-1',
       name: 'Demo'
     })
-    expect(mapMantisProject(site, { id: 5 })).toEqual({ id: '5', siteId: 'site-1', name: '5' })
-    expect(mapMantisProject(site, {})).toEqual({
+    expect(mapMantisBTProject(site, { id: 5 })).toEqual({ id: '5', siteId: 'site-1', name: '5' })
+    expect(mapMantisBTProject(site, {})).toEqual({
       id: '',
       siteId: 'site-1',
       name: 'Untitled project'
