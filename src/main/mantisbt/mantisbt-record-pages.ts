@@ -26,6 +26,36 @@ export class MantisBTPaginationLimitError extends Error {
   }
 }
 
+// Why: a live server can truncate a page's response body mid-transmission
+// under load (confirmed against a real 2,500+ issue project: response.ok
+// but response.json() throws SyntaxError) — transient, not a real HTTP
+// error, so a bounded retry recovers most of these without surfacing a
+// failure the user has to manually retry. Real HTTP errors (401/500/...)
+// and cancellation are not retried; retrying those wastes the deadline on
+// a failure that will not change.
+const MAX_PAGE_FETCH_ATTEMPTS = 3
+const PAGE_RETRY_DELAY_MS = 500
+
+async function fetchIssuePage(
+  entry: MantisBTClientForSite,
+  path: string,
+  signal: AbortSignal | undefined
+): Promise<MantisBTIssuesResponse> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await mantisBTRequest<MantisBTIssuesResponse>(entry, path, { signal })
+    } catch (error) {
+      const retryable = error instanceof SyntaxError && !signal?.aborted
+      if (!retryable || attempt >= MAX_PAGE_FETCH_ATTEMPTS) {
+        throw error
+      }
+      const { promise, resolve } = Promise.withResolvers<void>()
+      setTimeout(resolve, PAGE_RETRY_DELAY_MS)
+      await promise
+    }
+  }
+}
+
 // MantisBT's issue listing has no cursor/total envelope to detect the last
 // page from, so a short page (fewer than requested, including empty) is the
 // only reliable "no more results" signal. The 500-page ceiling is a safety
@@ -43,13 +73,7 @@ export async function fetchAllIssuePages(
     if (guard >= 500) {
       throw new MantisBTPaginationLimitError()
     }
-    const response = await mantisBTRequest<MantisBTIssuesResponse>(
-      entry,
-      pathForPage(page, pageSize),
-      {
-        signal
-      }
-    )
+    const response = await fetchIssuePage(entry, pathForPage(page, pageSize), signal)
     const items = Array.isArray(response.issues) ? response.issues : []
     records.push(...items)
     if (items.length < pageSize) {
