@@ -10,7 +10,6 @@ import {
 } from '../../../../shared/protocol-version'
 import type { AutomationHostTarget } from './automation-host-client'
 import type { SshConnectionState } from '../../../../shared/ssh-types'
-import type { RuntimeStatus } from '../../../../shared/runtime-types'
 import type { ProjectHostSetup } from '../../../../shared/project-types'
 import type { Repo } from '../../../../shared/repo-types'
 import type { RuntimeEnvironmentStatus } from '../../../../shared/runtime-host-status'
