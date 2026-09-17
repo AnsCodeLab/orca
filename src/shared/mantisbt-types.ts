@@ -51,6 +51,11 @@ export type MantisBTProject = {
   id: string
   siteId: string
   name: string
+  // Why: MantisBT supports nested projects (a project can have its own
+  // subprojects, recursively) — see mantisbt-project-queries.ts's
+  // buildMantisBTProjectForest for how the flat REST response is resolved
+  // into this tree. Always present, [] when the project has no children.
+  subProjects: MantisBTProject[]
 }
 
 export type MantisBTIssueStatus = {

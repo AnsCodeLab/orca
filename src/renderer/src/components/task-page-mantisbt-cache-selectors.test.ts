@@ -26,7 +26,7 @@ function mantisBTIssue(id: string, summary: string, siteId = 'site-1'): MantisBT
     url: `https://example.com/view.php?id=${id}`,
     siteId,
     siteName: 'Example MantisBT',
-    project: { id: '1', siteId, name: 'Alpha' },
+    project: { id: '1', siteId, name: 'Alpha', subProjects: [] },
     status: { id: '10', name: 'new', label: 'new' },
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z'

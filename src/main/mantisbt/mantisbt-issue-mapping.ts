@@ -56,7 +56,8 @@ export function mapMantisBTProject(site: MantisBTSite, value: unknown): MantisBT
   return {
     id,
     siteId: site.id,
-    name: asString(project.name, id || 'Untitled project')
+    name: asString(project.name, id || 'Untitled project'),
+    subProjects: []
   }
 }
 

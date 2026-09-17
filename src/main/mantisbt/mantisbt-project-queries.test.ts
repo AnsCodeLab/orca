@@ -58,8 +58,12 @@ function writeMantisBTSites(
   }
 }
 
-function makeProjectRecord(id: number, name: string): Record<string, unknown> {
-  return { id, name }
+function makeProjectRecord(
+  id: number,
+  name: string,
+  subProjects: { id: number; name: string }[] = []
+): Record<string, unknown> {
+  return { id, name, subProjects }
 }
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -228,5 +232,50 @@ describe('MantisBT listProjects', () => {
     expect(projects[0]?.siteId).toBe('alpha')
     expect(existsSync(tokenPathForSite('beta'))).toBe(false)
     expect(mantisBT.getStatus().sites.map((site) => site.id)).toEqual(['alpha'])
+  })
+
+  it('moves a subproject out of the top-level list and nests it under its parent', async () => {
+    writeMantisBTSites([
+      { id: 'site-a', siteUrl: 'https://mantisbt.example.com', userId: '42', token: 'token-a' }
+    ])
+    netFetchMock.mockImplementation(async () =>
+      jsonResponse({
+        projects: [
+          makeProjectRecord(1, 'QCS-VS', [{ id: 2, name: 'QCS App' }]),
+          makeProjectRecord(2, 'QCS App'),
+          makeProjectRecord(3, 'Standalone')
+        ]
+      })
+    )
+    const mantisBT = await loadProjectQueriesModule()
+
+    const projects = await mantisBT.listProjects('site-a')
+
+    expect(projects.map((project) => project.name)).toEqual(['QCS-VS', 'Standalone'])
+    const qcsVs = projects.find((project) => project.name === 'QCS-VS')
+    expect(qcsVs?.subProjects.map((project) => project.name)).toEqual(['QCS App'])
+  })
+
+  it('resolves a multi-level subproject chain, not just one level deep', async () => {
+    writeMantisBTSites([
+      { id: 'site-a', siteUrl: 'https://mantisbt.example.com', userId: '42', token: 'token-a' }
+    ])
+    netFetchMock.mockImplementation(async () =>
+      jsonResponse({
+        projects: [
+          makeProjectRecord(1, 'Ewarenow', [{ id: 2, name: 'EQQ' }]),
+          makeProjectRecord(2, 'EQQ', [{ id: 3, name: 'EQQ Application' }]),
+          makeProjectRecord(3, 'EQQ Application')
+        ]
+      })
+    )
+    const mantisBT = await loadProjectQueriesModule()
+
+    const projects = await mantisBT.listProjects('site-a')
+
+    expect(projects.map((project) => project.name)).toEqual(['Ewarenow'])
+    const eqq = projects[0]?.subProjects[0]
+    expect(eqq?.name).toBe('EQQ')
+    expect(eqq?.subProjects.map((project) => project.name)).toEqual(['EQQ Application'])
   })
 })

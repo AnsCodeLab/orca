@@ -3,6 +3,8 @@
 // mantisbt-project-queries.ts's projectDedupeKey), so a selected project must
 // carry its owning site alongside the raw id to filter unambiguously,
 // including when the site scope elsewhere is 'all sites'.
+import type { MantisBTProject } from '../../../shared/mantisbt-types'
+
 const SEPARATOR = '::'
 
 export type MantisBTProjectSelection = {
@@ -28,4 +30,23 @@ export function parseMantisBTProjectSelectionKey(value: string): MantisBTProject
     return null
   }
   return { siteId, projectId }
+}
+
+export type MantisBTFlattenedProject = {
+  project: MantisBTProject
+  depth: number
+}
+
+// Why: shadcn's Select has no built-in tree/indented-group primitive — flatten
+// MantisBT's (potentially multi-level) project tree into a depth-first
+// ordered list with a depth so the dropdown can render each entry with
+// depth-proportional indentation, matching MantisBT's own project-picker.
+export function flattenMantisBTProjectTree(
+  projects: MantisBTProject[],
+  depth = 0
+): MantisBTFlattenedProject[] {
+  return projects.flatMap((project) => [
+    { project, depth },
+    ...flattenMantisBTProjectTree(project.subProjects, depth + 1)
+  ])
 }

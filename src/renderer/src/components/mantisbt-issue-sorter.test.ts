@@ -6,7 +6,7 @@ function issue(overrides: Partial<MantisBTIssue> & { id: string }): MantisBTIssu
   return {
     summary: 'Issue',
     url: `https://example.com/view.php?id=${overrides.id}`,
-    project: { id: '1', siteId: 'site-1', name: 'Alpha' },
+    project: { id: '1', siteId: 'site-1', name: 'Alpha', subProjects: [] },
     status: { id: '10', name: 'new', label: 'new' },
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
