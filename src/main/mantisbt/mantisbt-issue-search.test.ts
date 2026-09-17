@@ -239,6 +239,51 @@ describe('MantisBT listIssues', () => {
     expect(capturedUrl).not.toContain('project_id')
   })
 
+  it('retries a page once after a transient truncated-JSON response and succeeds', async () => {
+    writeMantisBTSites([
+      { id: 'site-a', siteUrl: 'https://mantisbt.example.com', userId: '42', token: 'token-a' }
+    ])
+    let issuesCallCount = 0
+    netFetchMock.mockImplementation(async (url: string) => {
+      expect(url).not.toContain('/users/me')
+      issuesCallCount += 1
+      if (issuesCallCount === 1) {
+        return new Response('{"issues": [', {
+          status: 200,
+          statusText: 'OK',
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+      return jsonResponse({ issues: [makeIssueRecord(1, 42, '2024-02-01T00:00:00.000Z')] })
+    })
+    const mantisBT = await loadSearchModule()
+
+    const issues = await mantisBT.listIssues('all', 30, 'site-a')
+
+    expect(issues.map((issue) => issue.id)).toEqual(['1'])
+    expect(issuesCallCount).toBe(2)
+  })
+
+  it('gives up after exhausting retries on a persistently truncated response', async () => {
+    writeMantisBTSites([
+      { id: 'site-a', siteUrl: 'https://mantisbt.example.com', userId: '42', token: 'token-a' }
+    ])
+    let issuesCallCount = 0
+    netFetchMock.mockImplementation(async (url: string) => {
+      expect(url).not.toContain('/users/me')
+      issuesCallCount += 1
+      return new Response('{"issues": [', {
+        status: 200,
+        statusText: 'OK',
+        headers: { 'Content-Type': 'application/json' }
+      })
+    })
+    const mantisBT = await loadSearchModule()
+
+    await expect(mantisBT.listIssues('all', 30, 'site-a')).rejects.toThrow(SyntaxError)
+    expect(issuesCallCount).toBe(3)
+  })
+
   it('walks multiple pages until a short page is returned', async () => {
     writeMantisBTSites([
       { id: 'site-a', siteUrl: 'https://mantisbt.example.com', userId: '42', token: 'token-a' }
