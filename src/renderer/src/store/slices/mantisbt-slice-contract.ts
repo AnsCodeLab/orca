@@ -6,6 +6,7 @@ import type {
   MantisBTConnectionStatus,
   MantisBTIssue,
   MantisBTIssueFilter,
+  MantisBTProject,
   MantisBTSiteSelection,
   MantisBTViewer
 } from '../../../../shared/mantisbt-types'
@@ -14,6 +15,7 @@ import type { TaskSourceContext } from '../../../../shared/task-source-context'
 export type MantisBTReadOptions = {
   sourceContext?: TaskSourceContext | null
   siteId?: MantisBTSiteSelection | null
+  projectId?: string | null
 }
 export type MantisBTSlice = {
   mantisBTStatus: MantisBTConnectionStatus
@@ -33,6 +35,7 @@ export type MantisBTSlice = {
 
   mantisBTIssueCache: Record<string, CacheEntry<MantisBTIssue>>
   mantisBTSearchCache: Record<string, CacheEntry<MantisBTIssue[]>>
+  mantisBTProjectCache: Record<string, CacheEntry<MantisBTProject[]>>
 
   fetchMantisBTIssue: (
     id: string,
@@ -44,6 +47,7 @@ export type MantisBTSlice = {
     limit?: number,
     options?: MantisBTReadOptions
   ) => Promise<MantisBTIssue[]>
+  listMantisBTProjects: (options?: MantisBTReadOptions) => Promise<MantisBTProject[]>
 }
 
 type MantisBTStateCreator = StateCreator<AppState, [], [], MantisBTSlice>

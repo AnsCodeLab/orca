@@ -75,6 +75,7 @@ export function useTaskPageStoreBindings() {
   const selectMantisBTSite = useAppStore((s) => s.selectMantisBTSite)
   const listMantisBTIssues = useAppStore((s) => s.listMantisBTIssues)
   const fetchMantisBTIssue = useAppStore((s) => s.fetchMantisBTIssue)
+  const listMantisBTProjects = useAppStore((s) => s.listMantisBTProjects)
   const checkMantisBTConnection = useAppStore((s) => s.checkMantisBTConnection)
   const providerRuntimeContextKey = getProviderRuntimeContextKey(settings)
   const providerRuntimeContextKeyRef = useRef(providerRuntimeContextKey)
@@ -158,6 +159,7 @@ export function useTaskPageStoreBindings() {
     selectMantisBTSite,
     listMantisBTIssues,
     fetchMantisBTIssue,
+    listMantisBTProjects,
     checkMantisBTConnection,
     mantisBTStatusCurrent,
     mantisBTStatusReady,

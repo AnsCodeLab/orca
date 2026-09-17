@@ -40,6 +40,7 @@ import { useTaskPageJiraListEffects } from '../use-task-page-jira-list-effects'
 import { useTaskPageMantisBTDetailRouting } from '../use-task-page-mantisbt-detail-routing'
 import { useTaskPageMantisBTConnectState } from '../use-task-page-mantisbt-connect-state'
 import { useTaskPageMantisBTListState } from '../use-task-page-mantisbt-list-state'
+import { useTaskPageMantisBTProjectList } from '../use-task-page-mantisbt-project-list'
 import { useTaskPageMantisBTListProjection } from '../use-task-page-mantisbt-list-projection'
 import { useTaskPageMantisBTListEffects } from '../use-task-page-mantisbt-list-effects'
 import { useTaskPageMantisBTComposerActions } from '../use-task-page-mantisbt-composer-actions'
@@ -93,7 +94,8 @@ export default function TaskPage(): React.JSX.Element {
   const stage38a = useTaskPageMantisBTDetailRouting(stage38)
   const stage38b = useTaskPageMantisBTConnectState(stage38a)
   const stage38c = useTaskPageMantisBTListState(stage38b)
-  const stage38d = useTaskPageMantisBTListProjection(stage38c)
+  const stage38c1 = useTaskPageMantisBTProjectList(stage38c)
+  const stage38d = useTaskPageMantisBTListProjection(stage38c1)
   const stage38e = useTaskPageMantisBTListEffects(stage38d)
   const stage38f = useTaskPageMantisBTComposerActions(stage38e)
   const stage39 = useTaskPageComposerActions(stage38f)

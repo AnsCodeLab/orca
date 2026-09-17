@@ -19,12 +19,14 @@ import type { MantisBTReadFailure } from './mantisbt-read-failure'
 
 // Why: fetchAllIssuePages fetches every page of a site's issue list (no
 // server-side handler_id/reporter_id filter exists to narrow the request —
-// see below), and a large self-hosted instance's per-page latency can climb
-// with page depth: a live server with 1000+ issues measured page 1 at ~2.8s
-// growing to ~11s by page 20, extrapolating to several minutes for the full
-// listing. The request is cancelable (preset/site switch or navigating away
-// aborts and is ignored by the renderer), so a generous ceiling here trades
-// a long wait for a real server response instead of a premature failure.
+// see below; project_id IS respected server-side and is the recommended way
+// for a caller to narrow a large multi-project instance's fetch), and a
+// large self-hosted instance's per-page latency can climb with page depth: a
+// live server with 1000+ issues measured page 1 at ~2.8s growing to ~11s by
+// page 20, extrapolating to several minutes for the full unscoped listing.
+// The request is cancelable (preset/site switch or navigating away aborts
+// and is ignored by the renderer), so a generous ceiling here trades a long
+// wait for a real server response instead of a premature failure.
 const ISSUE_SEARCH_TIMEOUT_MS = 300_000
 
 function clampLimit(limit: number | undefined, fallback = 30): number {
@@ -35,6 +37,7 @@ export async function listIssues(
   filter: MantisBTIssueFilter = 'assigned',
   limit = 30,
   siteId?: MantisBTSiteSelection | null,
+  projectId?: string | null,
   signal?: AbortSignal
 ): Promise<MantisBTIssue[]> {
   const entries = getClients(siteId)
@@ -71,6 +74,9 @@ export async function listIssues(
                 page: String(page),
                 page_size: String(pageSize)
               })
+              if (projectId) {
+                params.set('project_id', projectId)
+              }
               return `${apiBasePath(entry.site.usePhpIndexPath)}/issues?${params.toString()}`
             },
             50,

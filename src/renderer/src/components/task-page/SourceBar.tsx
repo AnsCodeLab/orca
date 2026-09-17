@@ -45,6 +45,7 @@ export function TaskPageSourceBar({
     setJiraError,
     setSelectedMantisBTIssueKey,
     setSelectedMantisBTIssueFallback,
+    setSelectedMantisBTProjectId,
     setMantisBTIssues,
     setMantisBTLoading,
     setMantisBTError,
@@ -243,6 +244,7 @@ export function TaskPageSourceBar({
               onValueChange={(value) => {
                 setSelectedMantisBTIssueKey(null)
                 setSelectedMantisBTIssueFallback(null)
+                setSelectedMantisBTProjectId('all')
                 setMantisBTIssues([])
                 setMantisBTError(null)
                 setMantisBTLoading(true)

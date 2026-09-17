@@ -1,6 +1,14 @@
 import type { TaskPageComposerActionsModel } from '../../use-task-page-composer-actions'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem
+} from '@/components/ui/select'
+import { buildMantisBTProjectSelectionKey } from '../../task-page-mantisbt-project-selection'
 import { translate } from '@/i18n/i18n'
 import { LoaderCircle, RefreshCw, Search, X } from 'lucide-react'
 
@@ -16,7 +24,10 @@ export function TaskPageMantisBTFilters({
     setMantisBTSearchInput,
     activeMantisBTPreset,
     setActiveMantisBTPreset,
-    setMantisBTRefreshNonce
+    setMantisBTRefreshNonce,
+    mantisBTProjects,
+    selectedMantisBTProjectId,
+    setSelectedMantisBTProjectId
   } = model
   return (
     <div className="rounded-md rounded-b-none border border-border/50 bg-muted/50 px-3 pt-2 pb-0 shadow-sm">
@@ -97,6 +108,32 @@ export function TaskPageMantisBTFilters({
             </button>
           ) : null}
         </div>
+        {mantisBTProjects.length > 1 ? (
+          <Select
+            value={selectedMantisBTProjectId}
+            onValueChange={(value) => {
+              setSelectedMantisBTProjectId(value)
+              setMantisBTRefreshNonce((n) => n + 1)
+            }}
+          >
+            <SelectTrigger className="h-8 w-[220px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">
+                {translate('auto.components.TaskPage.mantisbtAllProjects', 'All projects')}
+              </SelectItem>
+              {mantisBTProjects.map((project) => (
+                <SelectItem
+                  key={buildMantisBTProjectSelectionKey(project.siteId, project.id)}
+                  value={buildMantisBTProjectSelectionKey(project.siteId, project.id)}
+                >
+                  {project.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : null}
       </div>
     </div>
   )

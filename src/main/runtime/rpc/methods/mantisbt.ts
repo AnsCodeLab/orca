@@ -41,7 +41,13 @@ export const MANTISBT_METHODS = [
     name: 'mantisBT.listIssues',
     params: ListIssues,
     handler: async (params, { runtime, signal }) =>
-      runtime.mantisBTListIssues(params?.filter, params?.limit, params?.siteId, signal)
+      runtime.mantisBTListIssues(
+        params?.filter,
+        params?.limit,
+        params?.siteId,
+        params?.projectId,
+        signal
+      )
   }),
   defineMethod({
     name: 'mantisBT.getIssue',

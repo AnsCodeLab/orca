@@ -22,6 +22,7 @@ export type MantisBTApi = {
     filter?: MantisBTIssueFilter
     limit?: number
     siteId?: MantisBTSiteSelection
+    projectId?: string
   }) => Promise<MantisBTIssue[]>
   getIssue: (args: { id: string; siteId?: string }) => Promise<MantisBTIssue | null>
   listProjects: (args?: { siteId?: MantisBTSiteSelection }) => Promise<MantisBTProject[]>
