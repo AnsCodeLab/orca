@@ -8,7 +8,10 @@ import {
   SelectContent,
   SelectItem
 } from '@/components/ui/select'
-import { buildMantisBTProjectSelectionKey } from '../../task-page-mantisbt-project-selection'
+import {
+  buildMantisBTProjectSelectionKey,
+  flattenMantisBTProjectTree
+} from '../../task-page-mantisbt-project-selection'
 import { translate } from '@/i18n/i18n'
 import { LoaderCircle, RefreshCw, Search, X } from 'lucide-react'
 
@@ -29,6 +32,7 @@ export function TaskPageMantisBTFilters({
     selectedMantisBTProjectId,
     setSelectedMantisBTProjectId
   } = model
+  const flattenedProjects = flattenMantisBTProjectTree(mantisBTProjects)
   return (
     <div className="rounded-md rounded-b-none border border-border/50 bg-muted/50 px-3 pt-2 pb-0 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -108,7 +112,7 @@ export function TaskPageMantisBTFilters({
             </button>
           ) : null}
         </div>
-        {mantisBTProjects.length > 1 ? (
+        {flattenedProjects.length > 1 ? (
           <Select
             value={selectedMantisBTProjectId}
             onValueChange={(value) => {
@@ -123,12 +127,12 @@ export function TaskPageMantisBTFilters({
               <SelectItem value="all">
                 {translate('auto.components.TaskPage.mantisbtAllProjects', 'All projects')}
               </SelectItem>
-              {mantisBTProjects.map((project) => (
+              {flattenedProjects.map(({ project, depth }) => (
                 <SelectItem
                   key={buildMantisBTProjectSelectionKey(project.siteId, project.id)}
                   value={buildMantisBTProjectSelectionKey(project.siteId, project.id)}
                 >
-                  {project.name}
+                  <span style={{ paddingLeft: depth * 12 }}>{project.name}</span>
                 </SelectItem>
               ))}
             </SelectContent>

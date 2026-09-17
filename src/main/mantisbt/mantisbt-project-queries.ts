@@ -1,4 +1,8 @@
-import type { MantisBTProject, MantisBTSiteSelection } from '../../shared/mantisbt-types'
+import type {
+  MantisBTProject,
+  MantisBTSite,
+  MantisBTSiteSelection
+} from '../../shared/mantisbt-types'
 import { acquire, release } from './request-queue'
 import { apiBasePath, mantisBTRequest } from './authenticated-request'
 import { clearToken, getClients, isAuthError } from './client'
@@ -9,6 +13,7 @@ import {
   withMantisBTDeadline
 } from './mantisbt-read-failure'
 import type { MantisBTReadFailure } from './mantisbt-read-failure'
+import { asRecord } from './mantisbt-record-pages'
 import type { MantisBTRecord } from './mantisbt-record-pages'
 
 const PROJECT_LIST_TIMEOUT_MS = 30_000
@@ -19,6 +24,48 @@ type MantisBTProjectsResponse = {
 
 function projectDedupeKey(project: MantisBTProject): string {
   return `${project.siteId}:${project.id}`
+}
+
+// Why: MantisBT's REST API returns every accessible project as a flat
+// top-level entry, and separately (redundantly, only one level deep) nests
+// each parent's direct children under its own `subProjects` field — a
+// subproject referenced this way does not itself carry its own children.
+// Rebuilding a real multi-level tree means resolving each subProjects
+// reference back against the full flat list, recursively, and dropping any
+// project that is someone else's child from the top-level result (it now
+// appears only nested under its parent, matching MantisBT's own
+// project-picker sidebar).
+function buildMantisBTProjectForest(
+  site: MantisBTSite,
+  records: MantisBTRecord[]
+): MantisBTProject[] {
+  const byId = new Map<string, MantisBTRecord>()
+  for (const record of records) {
+    byId.set(String(record.id), record)
+  }
+  const childIds = new Set<string>()
+  for (const record of records) {
+    const subRecords = Array.isArray(record.subProjects) ? record.subProjects : []
+    for (const sub of subRecords) {
+      const subId = asRecord(sub).id
+      if (subId !== undefined) {
+        childIds.add(String(subId))
+      }
+    }
+  }
+  function resolve(record: MantisBTRecord): MantisBTProject {
+    const subRecords = Array.isArray(record.subProjects) ? record.subProjects : []
+    const children = subRecords
+      .map((sub) => byId.get(String(asRecord(sub).id)))
+      .filter((found): found is MantisBTRecord => found !== undefined)
+      .map(resolve)
+      .sort((a, b) => a.name.localeCompare(b.name))
+    return { ...mapMantisBTProject(site, record), subProjects: children }
+  }
+  return records
+    .filter((record) => !childIds.has(String(record.id)))
+    .map(resolve)
+    .sort((a, b) => a.name.localeCompare(b.name))
 }
 
 export async function listProjects(
@@ -41,7 +88,7 @@ export async function listProjects(
             `${apiBasePath(entry.site.usePhpIndexPath)}/projects`,
             { signal: requestSignal }
           )
-          return (response.projects ?? []).map((project) => mapMantisBTProject(entry.site, project))
+          return buildMantisBTProjectForest(entry.site, response.projects ?? [])
         } catch (error) {
           if (requestSignal.aborted) {
             throw error
