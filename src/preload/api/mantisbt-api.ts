@@ -23,7 +23,11 @@ export type MantisBTApi = {
     limit?: number
     siteId?: MantisBTSiteSelection
     projectId?: string
+    requestId?: string
   }) => Promise<MantisBTIssue[]>
+  onListIssuesProgress: (
+    callback: (data: { requestId: string; issues: MantisBTIssue[] }) => void
+  ) => () => void
   getIssue: (args: { id: string; siteId?: string }) => Promise<MantisBTIssue | null>
   listProjects: (args?: { siteId?: MantisBTSiteSelection }) => Promise<MantisBTProject[]>
 }

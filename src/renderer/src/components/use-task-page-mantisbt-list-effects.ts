@@ -38,14 +38,29 @@ export function useTaskPageMantisBTListEffects(
       return
     }
     let cancelled = false
+    let receivedPartialResults = false
     setMantisBTLoading(true)
     setMantisBTError(null)
     setMantisBTErrorDetailsOpen(false)
+    // Why: clears any prior selection's stale issues before this fetch's own
+    // progress events start filling the list back in — otherwise a filter
+    // change would briefly reshow the previous filter/project's issues.
+    setMantisBTIssues([])
     const projectSelection = parseMantisBTProjectSelectionKey(selectedMantisBTProjectId)
     void listMantisBTIssues(activeMantisBTPreset, MANTISBT_ITEM_LIMIT, {
       sourceContext: mantisBTTaskSourceContext,
       siteId: projectSelection?.siteId ?? undefined,
-      projectId: projectSelection?.projectId ?? undefined
+      projectId: projectSelection?.projectId ?? undefined,
+      // Why: shows issues as pages arrive instead of a blank spinner for the
+      // whole fetch, and — combined with not clearing mantisBTIssues in the
+      // catch branch below — keeps already-loaded issues visible if a later
+      // page fails outright instead of wiping a partial result to nothing.
+      onProgress: (issues) => {
+        if (!cancelled) {
+          receivedPartialResults = issues.length > 0
+          setMantisBTIssues(issues)
+        }
+      }
     })
       .then((issues) => {
         if (cancelled) {
@@ -58,9 +73,8 @@ export function useTaskPageMantisBTListEffects(
         if (cancelled) {
           return
         }
-        const failureState = createTaskPageMantisBTLoadFailureState(err)
-        setMantisBTIssues(failureState.issues)
-        setMantisBTError(failureState.error)
+        const failureState = createTaskPageMantisBTLoadFailureState(err, receivedPartialResults)
+        setMantisBTError(failureState)
         setMantisBTLoading(false)
       })
     return () => {

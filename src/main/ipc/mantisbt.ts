@@ -63,12 +63,13 @@ export function registerMantisBTHandlers(): void {
   ipcMain.handle(
     'mantisBT:listIssues',
     async (
-      _event,
+      event,
       args?: {
         filter?: MantisBTIssueFilter
         limit?: number
         siteId?: MantisBTSiteSelection
         projectId?: string
+        requestId?: string
       }
     ) => {
       const requestedFilter = args?.filter
@@ -76,11 +77,20 @@ export function registerMantisBTHandlers(): void {
         requestedFilter !== undefined && VALID_FILTERS.has(requestedFilter)
           ? requestedFilter
           : undefined
+      const requestId = normalizeSiteId(args?.requestId)
       return listIssues(
         filter,
         clampLimit(args?.limit),
         normalizeSiteSelection(args?.siteId),
-        normalizeSiteId(args?.projectId) ?? null
+        normalizeSiteId(args?.projectId) ?? null,
+        undefined,
+        requestId
+          ? (issues) => {
+              if (!event.sender.isDestroyed()) {
+                event.sender.send('mantisBT:listIssuesProgress', { requestId, issues })
+              }
+            }
+          : undefined
       )
     }
   )

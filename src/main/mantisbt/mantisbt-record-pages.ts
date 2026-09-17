@@ -62,11 +62,18 @@ async function fetchIssuePage(
 // net against a server that never returns a short page — hitting it throws
 // instead of silently returning a truncated result set, since a MantisBT
 // instance can legitimately have more than 25,000 issues on one project.
+//
+// Why onPage: a large project can take minutes to fully page through (see
+// ISSUE_SEARCH_TIMEOUT_MS in mantisbt-issue-search.ts) — reporting each
+// page's records as they arrive lets the caller show issues incrementally
+// instead of a blank spinner for the whole fetch, and lets it keep
+// already-fetched issues visible if a later page fails outright.
 export async function fetchAllIssuePages(
   entry: MantisBTClientForSite,
   pathForPage: (page: number, pageSize: number) => string,
   pageSize = 50,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  onPage?: (pageRecords: MantisBTRecord[]) => void
 ): Promise<MantisBTRecord[]> {
   const records: MantisBTRecord[] = []
   for (let page = 1, guard = 0; ; page += 1, guard += 1) {
@@ -76,6 +83,7 @@ export async function fetchAllIssuePages(
     const response = await fetchIssuePage(entry, pathForPage(page, pageSize), signal)
     const items = Array.isArray(response.issues) ? response.issues : []
     records.push(...items)
+    onPage?.(items)
     if (items.length < pageSize) {
       break
     }

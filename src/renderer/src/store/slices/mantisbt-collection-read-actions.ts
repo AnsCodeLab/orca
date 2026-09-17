@@ -1,3 +1,4 @@
+import { getMantisBTRuntimeTarget } from '@/runtime/runtime-mantisbt-target'
 import { mantisBTListIssues } from '@/runtime/runtime-mantisbt-client'
 import { isIntegrationCredentialDecryptionError } from '../../../../shared/integration-credential-errors'
 import type { MantisBTIssue, MantisBTSiteSelection } from '../../../../shared/mantisbt-types'
@@ -91,7 +92,25 @@ export function createMantisBTCollectionReadActions(
         return inflight.promise
       }
       let entry: InflightMantisBTReadRequest<MantisBTIssue[]>
-      const promise = mantisBTListIssues(scope.settings, filter, limit, siteId, projectId)
+      const target = getMantisBTRuntimeTarget(scope.settings)
+      const onProgress = options?.onProgress
+      const requestId =
+        target.kind !== 'environment' && onProgress ? crypto.randomUUID() : undefined
+      const unsubscribeProgress = requestId
+        ? window.api.mantisBT.onListIssuesProgress(({ requestId: rid, issues }) => {
+            if (rid === requestId) {
+              onProgress?.(issues)
+            }
+          })
+        : undefined
+      const promise = mantisBTListIssues(
+        scope.settings,
+        filter,
+        limit,
+        siteId,
+        projectId,
+        requestId
+      )
         .then((issues) => {
           if (
             inflightMantisBTListRequests.get(cacheKey) === entry &&
@@ -118,6 +137,7 @@ export function createMantisBTCollectionReadActions(
           )
         })
         .finally(() => {
+          unsubscribeProgress?.()
           if (inflightMantisBTListRequests.get(cacheKey) === entry) {
             inflightMantisBTListRequests.delete(cacheKey)
           }
