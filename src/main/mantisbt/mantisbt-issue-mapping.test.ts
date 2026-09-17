@@ -30,7 +30,7 @@ describe('mapMantisBTIssue', () => {
       id: '123',
       summary: 'Something broke',
       description: 'Detailed repro steps',
-      project: { id: '1', siteId: 'site-1', name: 'Demo' },
+      project: { id: '1', siteId: 'site-1', name: 'Demo', subProjects: [] },
       status: { id: '10', name: 'new', label: 'new' },
       priority: { id: '30', name: 'normal', label: 'normal' },
       reporter: { id: '5', name: 'reporter', realName: 'Reporter Real' },
@@ -95,13 +95,20 @@ describe('mapMantisBTProject', () => {
     expect(mapMantisBTProject(site, { id: 5, name: 'Demo' })).toEqual({
       id: '5',
       siteId: 'site-1',
-      name: 'Demo'
+      name: 'Demo',
+      subProjects: []
     })
-    expect(mapMantisBTProject(site, { id: 5 })).toEqual({ id: '5', siteId: 'site-1', name: '5' })
+    expect(mapMantisBTProject(site, { id: 5 })).toEqual({
+      id: '5',
+      siteId: 'site-1',
+      name: '5',
+      subProjects: []
+    })
     expect(mapMantisBTProject(site, {})).toEqual({
       id: '',
       siteId: 'site-1',
-      name: 'Untitled project'
+      name: 'Untitled project',
+      subProjects: []
     })
   })
 })
