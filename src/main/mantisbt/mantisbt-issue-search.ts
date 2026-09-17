@@ -38,7 +38,13 @@ export async function listIssues(
   limit = 30,
   siteId?: MantisBTSiteSelection | null,
   projectId?: string | null,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  // Why: only wired for a single connected/selected site — an 'all sites'
+  // fan-out would need to interleave multiple sites' running totals into
+  // one ordered list, which isn't worth the complexity for the rare
+  // multi-site case (mirrors the same simplification the nested-repo-scan
+  // and workspace-space progress channels already make).
+  onProgress?: (issues: MantisBTIssue[]) => void
 ): Promise<MantisBTIssue[]> {
   const entries = getClients(siteId)
   if (entries.length === 0) {
@@ -46,6 +52,7 @@ export async function listIssues(
   }
   const safeLimit = clampLimit(limit)
   const surfaceSiteFailure = shouldSurfaceSiteFailure(siteId, entries.length)
+  const reportProgress = entries.length === 1 ? onProgress : undefined
   const failures: (MantisBTReadFailure | undefined)[] = Array.from({ length: entries.length })
   const results = await withMantisBTDeadline(signal, ISSUE_SEARCH_TIMEOUT_MS, (requestSignal) =>
     Promise.all(
@@ -67,6 +74,16 @@ export async function listIssues(
                     }
                   )
                 ).id
+          const filterByViewer = (issues: MantisBTIssue[]): MantisBTIssue[] => {
+            if (filter === 'assigned') {
+              return issues.filter((issue) => issue.handler?.id === viewerId)
+            }
+            if (filter === 'reported') {
+              return issues.filter((issue) => issue.reporter?.id === viewerId)
+            }
+            return issues
+          }
+          const accumulated: MantisBTIssue[] = []
           const records = await fetchAllIssuePages(
             entry,
             (page, pageSize) => {
@@ -80,16 +97,18 @@ export async function listIssues(
               return `${apiBasePath(entry.site.usePhpIndexPath)}/issues?${params.toString()}`
             },
             50,
-            requestSignal
+            requestSignal,
+            reportProgress
+              ? (pageRecords) => {
+                  accumulated.push(
+                    ...pageRecords.map((record) => mapMantisBTIssue(entry.site, record))
+                  )
+                  reportProgress(filterByViewer(accumulated))
+                }
+              : undefined
           )
           const issues = records.map((record) => mapMantisBTIssue(entry.site, record))
-          if (filter === 'assigned') {
-            return issues.filter((issue) => issue.handler?.id === viewerId)
-          }
-          if (filter === 'reported') {
-            return issues.filter((issue) => issue.reporter?.id === viewerId)
-          }
-          return issues
+          return filterByViewer(issues)
         } catch (error) {
           if (requestSignal.aborted) {
             // Abandoned by the caller: not a site failure, so don't clear tokens or mask a real one.

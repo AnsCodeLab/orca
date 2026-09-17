@@ -16,6 +16,9 @@ export type MantisBTReadOptions = {
   sourceContext?: TaskSourceContext | null
   siteId?: MantisBTSiteSelection | null
   projectId?: string | null
+  // Why: only consulted by listMantisBTIssues, and only against a local
+  // (non-remote) runtime target — see runtime-mantisbt-client.ts.
+  onProgress?: (issues: MantisBTIssue[]) => void
 }
 export type MantisBTSlice = {
   mantisBTStatus: MantisBTConnectionStatus

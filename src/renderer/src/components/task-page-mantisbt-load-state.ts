@@ -1,13 +1,6 @@
-import type { MantisBTIssue } from '../../../shared/mantisbt-types'
-
 export type TaskPageMantisBTLoadError = {
   title: string
   details: string | null
-}
-
-export type TaskPageMantisBTLoadFailureState = {
-  issues: MantisBTIssue[]
-  error: TaskPageMantisBTLoadError
 }
 
 function getErrorMessage(error: unknown): string {
@@ -59,17 +52,21 @@ function getIssueSearchErrorSummary(message: string, code: number | null): strin
   return "Couldn't load MantisBT issues. Try again in a moment."
 }
 
+// Why hasPartialResults: with per-page progress, a fetch that fails partway
+// through can still have already shown some real issues (see
+// use-task-page-mantisbt-list-effects.ts, which deliberately does not clear
+// them) — the generic "couldn't load" summary would then read as if nothing
+// loaded, when the list below the banner may already have real issues in it.
 export function createTaskPageMantisBTLoadFailureState(
-  error: unknown
-): TaskPageMantisBTLoadFailureState {
+  error: unknown,
+  hasPartialResults: boolean
+): TaskPageMantisBTLoadError {
   const message = getErrorMessage(error)
   const code = getErrorCode(message)
   const summary = getIssueSearchErrorSummary(message, code)
+  const title = code === null ? summary : `Error ${code}: ${summary}`
   return {
-    issues: [],
-    error: {
-      title: code === null ? summary : `Error ${code}: ${summary}`,
-      details: getErrorDetails(message, code)
-    }
+    title: hasPartialResults ? `Showing partial results. ${title}` : title,
+    details: getErrorDetails(message, code)
   }
 }

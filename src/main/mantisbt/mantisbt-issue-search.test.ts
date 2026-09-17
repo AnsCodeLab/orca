@@ -308,6 +308,48 @@ describe('MantisBT listIssues', () => {
     expect(netFetchMock).toHaveBeenCalledTimes(2)
   })
 
+  it('reports cumulative filtered issues to onProgress as each page arrives', async () => {
+    writeMantisBTSites([
+      { id: 'site-a', siteUrl: 'https://mantisbt.example.com', userId: '42', token: 'token-a' }
+    ])
+    const page1 = Array.from({ length: 50 }, (_, index) =>
+      makeIssueRecord(index + 1, null, '2024-01-01T00:00:00.000Z')
+    )
+    const page2 = [makeIssueRecord(51, null, '2024-01-02T00:00:00.000Z')]
+    netFetchMock.mockImplementation(async (url: string) => {
+      expect(url).not.toContain('/users/me')
+      if (url.includes('page=2')) {
+        return jsonResponse({ issues: page2 })
+      }
+      return jsonResponse({ issues: page1 })
+    })
+    const mantisBT = await loadSearchModule()
+    const progressSnapshots: number[] = []
+
+    const issues = await mantisBT.listIssues('all', 100, 'site-a', null, undefined, (batch) =>
+      progressSnapshots.push(batch.length)
+    )
+
+    expect(issues).toHaveLength(51)
+    expect(progressSnapshots).toEqual([50, 51])
+  })
+
+  it('does not report progress when more than one site is fetched', async () => {
+    writeMantisBTSites([
+      { id: 'alpha', siteUrl: 'https://alpha.example.com', userId: 'u1', token: 'token-alpha' },
+      { id: 'beta', siteUrl: 'https://beta.example.com', userId: 'u2', token: 'token-beta' }
+    ])
+    netFetchMock.mockImplementation(async () =>
+      jsonResponse({ issues: [makeIssueRecord(1, null, '2024-01-01T00:00:00.000Z')] })
+    )
+    const mantisBT = await loadSearchModule()
+    const onProgress = vi.fn()
+
+    await mantisBT.listIssues('all', 30, 'all', null, undefined, onProgress)
+
+    expect(onProgress).not.toHaveBeenCalled()
+  })
+
   it('evicts only the failing site token on a 401 and still returns the healthy site issues', async () => {
     writeMantisBTSites([
       {
