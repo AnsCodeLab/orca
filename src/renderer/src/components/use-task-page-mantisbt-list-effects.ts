@@ -1,6 +1,7 @@
 import type { TaskPageMantisBTListProjectionModel } from './use-task-page-mantisbt-list-projection'
 import { useEffect } from 'react'
 import { createTaskPageMantisBTLoadFailureState } from '@/components/task-page-mantisbt-load-state'
+import { parseMantisBTProjectSelectionKey } from '@/components/task-page-mantisbt-project-selection'
 import { MANTISBT_ITEM_LIMIT } from './task-page-source-context'
 
 export type TaskPageMantisBTListEffectsModel = TaskPageMantisBTListProjectionModel
@@ -13,6 +14,7 @@ export function useTaskPageMantisBTListEffects(
     taskSource,
     mantisBTConnected,
     selectedMantisBTSiteId,
+    selectedMantisBTProjectId,
     mantisBTTaskSourceContext,
     listMantisBTIssues,
     activeMantisBTPreset,
@@ -39,8 +41,11 @@ export function useTaskPageMantisBTListEffects(
     setMantisBTLoading(true)
     setMantisBTError(null)
     setMantisBTErrorDetailsOpen(false)
+    const projectSelection = parseMantisBTProjectSelectionKey(selectedMantisBTProjectId)
     void listMantisBTIssues(activeMantisBTPreset, MANTISBT_ITEM_LIMIT, {
-      sourceContext: mantisBTTaskSourceContext
+      sourceContext: mantisBTTaskSourceContext,
+      siteId: projectSelection?.siteId ?? undefined,
+      projectId: projectSelection?.projectId ?? undefined
     })
       .then((issues) => {
         if (cancelled) {
@@ -66,6 +71,7 @@ export function useTaskPageMantisBTListEffects(
     taskSource,
     mantisBTConnected,
     selectedMantisBTSiteId,
+    selectedMantisBTProjectId,
     activeMantisBTPreset,
     mantisBTRefreshNonce,
     taskResumeApplied,

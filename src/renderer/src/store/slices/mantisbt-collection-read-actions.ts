@@ -67,10 +67,15 @@ export function createMantisBTCollectionReadActions(
   return {
     listMantisBTIssues: async (filter = 'assigned', limit = 30, options) => {
       const scope = getMantisBTReadScope(get().settings, options?.sourceContext)
-      const siteId = getSelectedMantisBTSiteId(get().mantisBTStatus)
+      // Why: a project filter is only unambiguous scoped to its own site (project
+      // ids are unique per-site, not globally) — the caller passes the project's
+      // owning siteId as an explicit override when a project is selected under an
+      // 'all sites' view; otherwise fall back to the store's selected site.
+      const siteId = options?.siteId ?? getSelectedMantisBTSiteId(get().mantisBTStatus)
+      const projectId = options?.projectId ?? null
       const cacheKey = scopedMantisBTCacheKey(
         scope,
-        `${siteId ?? 'default'}::list::${filter}::${limit}`
+        `${siteId ?? 'default'}::list::${filter}::${limit}::${projectId ?? 'all'}`
       )
       const cached = get().mantisBTSearchCache[cacheKey]
       if (isFreshMantisBTCacheEntry(cached)) {
@@ -86,7 +91,7 @@ export function createMantisBTCollectionReadActions(
         return inflight.promise
       }
       let entry: InflightMantisBTReadRequest<MantisBTIssue[]>
-      const promise = mantisBTListIssues(scope.settings, filter, limit, siteId)
+      const promise = mantisBTListIssues(scope.settings, filter, limit, siteId, projectId)
         .then((issues) => {
           if (
             inflightMantisBTListRequests.get(cacheKey) === entry &&

@@ -1,17 +1,17 @@
-import type { TaskPageMantisBTListStateModel } from './use-task-page-mantisbt-list-state'
+import type { TaskPageMantisBTProjectListModel } from './use-task-page-mantisbt-project-list'
 import { useMemo } from 'react'
 import { findTaskPageMantisBTIssue } from '@/components/task-page-mantisbt-cache-selectors'
 import { sortMantisBTIssues } from './mantisbt-issue-sorter'
 import type { MantisBTIssue } from '../../../shared/mantisbt-types'
 
-export type TaskPageMantisBTListProjectionModel = TaskPageMantisBTListStateModel & {
+export type TaskPageMantisBTListProjectionModel = TaskPageMantisBTProjectListModel & {
   fetchedMantisBTIssues: MantisBTIssue[]
   displayedMantisBTIssues: MantisBTIssue[]
   sortedMantisBTIssues: MantisBTIssue[]
 }
 
 export function useTaskPageMantisBTListProjection(
-  model: TaskPageMantisBTListStateModel
+  model: TaskPageMantisBTProjectListModel
 ): TaskPageMantisBTListProjectionModel {
   const {
     mantisBTTaskSourceContext,

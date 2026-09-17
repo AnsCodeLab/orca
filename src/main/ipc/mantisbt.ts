@@ -64,14 +64,24 @@ export function registerMantisBTHandlers(): void {
     'mantisBT:listIssues',
     async (
       _event,
-      args?: { filter?: MantisBTIssueFilter; limit?: number; siteId?: MantisBTSiteSelection }
+      args?: {
+        filter?: MantisBTIssueFilter
+        limit?: number
+        siteId?: MantisBTSiteSelection
+        projectId?: string
+      }
     ) => {
       const requestedFilter = args?.filter
       const filter =
         requestedFilter !== undefined && VALID_FILTERS.has(requestedFilter)
           ? requestedFilter
           : undefined
-      return listIssues(filter, clampLimit(args?.limit), normalizeSiteSelection(args?.siteId))
+      return listIssues(
+        filter,
+        clampLimit(args?.limit),
+        normalizeSiteSelection(args?.siteId),
+        normalizeSiteId(args?.projectId) ?? null
+      )
     }
   )
 

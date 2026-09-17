@@ -20,7 +20,8 @@ export const ListIssues = z
   .object({
     filter: z.enum(['assigned', 'reported', 'all']).optional(),
     limit: OptionalFiniteNumber,
-    siteId: OptionalString
+    siteId: OptionalString,
+    projectId: OptionalString
   })
   .optional()
 

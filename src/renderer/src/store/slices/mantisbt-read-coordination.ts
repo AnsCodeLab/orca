@@ -4,6 +4,7 @@ import type { MantisBTSlice, MantisBTSliceSet } from './mantisbt-slice-contract'
 import type {
   MantisBTConnectionStatus,
   MantisBTIssue,
+  MantisBTProject,
   MantisBTSiteSelection
 } from '../../../../shared/mantisbt-types'
 import {
@@ -36,6 +37,10 @@ export const inflightMantisBTIssueRequests = new Map<
 export const inflightMantisBTListRequests = new Map<
   string,
   InflightMantisBTReadRequest<MantisBTIssue[]>
+>()
+export const inflightMantisBTProjectRequests = new Map<
+  string,
+  InflightMantisBTReadRequest<MantisBTProject[]>
 >()
 
 export const EMPTY_MANTISBT_READ_CACHES = {

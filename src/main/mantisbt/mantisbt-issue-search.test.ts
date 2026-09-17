@@ -204,6 +204,41 @@ describe('MantisBT listIssues', () => {
     expect(issues.map((issue) => issue.id).sort()).toEqual(['1', '2'])
   })
 
+  it('includes project_id in the request when a project filter is provided', async () => {
+    writeMantisBTSites([
+      { id: 'site-a', siteUrl: 'https://mantisbt.example.com', userId: '42', token: 'token-a' }
+    ])
+    let capturedUrl = ''
+    netFetchMock.mockImplementation(async (url: string) => {
+      expect(url).not.toContain('/users/me')
+      capturedUrl = url
+      return jsonResponse({ issues: [makeIssueRecord(1, 42, '2024-02-01T00:00:00.000Z')] })
+    })
+    const mantisBT = await loadSearchModule()
+
+    const issues = await mantisBT.listIssues('all', 30, 'site-a', '50')
+
+    expect(issues.map((issue) => issue.id)).toEqual(['1'])
+    expect(capturedUrl).toContain('project_id=50')
+  })
+
+  it('omits project_id from the request when no project filter is provided', async () => {
+    writeMantisBTSites([
+      { id: 'site-a', siteUrl: 'https://mantisbt.example.com', userId: '42', token: 'token-a' }
+    ])
+    let capturedUrl = ''
+    netFetchMock.mockImplementation(async (url: string) => {
+      expect(url).not.toContain('/users/me')
+      capturedUrl = url
+      return jsonResponse({ issues: [makeIssueRecord(1, 42, '2024-02-01T00:00:00.000Z')] })
+    })
+    const mantisBT = await loadSearchModule()
+
+    await mantisBT.listIssues('all', 30, 'site-a')
+
+    expect(capturedUrl).not.toContain('project_id')
+  })
+
   it('walks multiple pages until a short page is returned', async () => {
     writeMantisBTSites([
       { id: 'site-a', siteUrl: 'https://mantisbt.example.com', userId: '42', token: 'token-a' }

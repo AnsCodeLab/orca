@@ -19,6 +19,7 @@ export const mantisBTApi = {
     filter?: 'assigned' | 'reported' | 'all'
     limit?: number
     siteId?: string
+    projectId?: string
   }) => ipcRenderer.invoke('mantisBT:listIssues', args),
 
   getIssue: (args: { id: string; siteId?: string }) =>

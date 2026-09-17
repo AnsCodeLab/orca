@@ -38,9 +38,10 @@ export class RuntimeMantisBTCommands {
     filter?: MantisBTIssueFilter,
     limit = 30,
     siteId?: MantisBTSiteSelection | null,
+    projectId?: string | null,
     signal?: AbortSignal
   ): Promise<MantisBTIssue[]> {
-    return listIssues(filter, limit, siteId, signal)
+    return listIssues(filter, limit, siteId, projectId, signal)
   }
 
   mantisBTGetIssue(

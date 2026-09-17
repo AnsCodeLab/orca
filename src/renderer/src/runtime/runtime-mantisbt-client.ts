@@ -88,13 +88,21 @@ export async function mantisBTListIssues(
   settings: RuntimeMantisBTSettings,
   filter?: MantisBTIssueFilter,
   limit?: number,
-  siteId?: MantisBTSiteSelection | null
+  siteId?: MantisBTSiteSelection | null,
+  projectId?: string | null
 ): Promise<MantisBTIssue[]> {
   const target = getMantisBTRuntimeTarget(settings)
-  const args = { filter, limit, siteId: siteId ?? undefined }
+  const args = {
+    filter,
+    limit,
+    siteId: siteId ?? undefined,
+    projectId: projectId ?? undefined
+  }
   // Why: fetchAllIssuePages has no server-side handler_id/reporter_id filter
   // to narrow the request, so a large self-hosted instance can take minutes
   // — matches ISSUE_SEARCH_TIMEOUT_MS in src/main/mantisbt/mantisbt-issue-search.ts.
+  // A project_id filter IS respected server-side and is the recommended way
+  // to keep a large multi-project instance's fetch fast.
   return target.kind === 'environment'
     ? callRuntimeRpc<MantisBTIssue[]>(target, 'mantisBT.listIssues', args, { timeoutMs: 300_000 })
     : window.api.mantisBT.listIssues(args)

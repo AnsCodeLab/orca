@@ -2288,7 +2288,8 @@
         "mantisbtOpenInMantisBTShort": "Open in MantisBT",
         "mantisbtSortHandler": "Handler",
         "mantisbtLinkSourceUnavailable": "Couldn’t link this MantisBT issue. Reconnect MantisBT or pick the matching site, then try again.",
-        "mantisbtSlowLoadHint": "Still loading — this can take longer for MantisBT instances with many issues."
+        "mantisbtSlowLoadHint": "Still loading — this can take longer for MantisBT instances with many issues.",
+        "mantisbtAllProjects": "All projects"
       },
       "Terminal": {
         "73768427cf": "Close",
@@ -9812,7 +9813,12 @@
             "7166b9090c": "GitHub authentication via the gh CLI.",
             "f16e41cc72": "GitHub Integration",
             "760e2446e0": "Bitbucket Cloud authentication with a saved API token or environment variables.",
-            "af5ae87847": "access token"
+            "af5ae87847": "access token",
+            "mantisbt01": "MantisBT Integration",
+            "mantisbt02": "Connect a self-hosted MantisBT instance with an API token.",
+            "mantisbt03": "mantisbt",
+            "mantisbt04": "mantis",
+            "mantisbt05": "self-hosted"
           }
         },
         "jira": {

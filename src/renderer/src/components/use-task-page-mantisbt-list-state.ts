@@ -17,6 +17,11 @@ export type TaskPageMantisBTListStateModel = TaskPageMantisBTConnectStateModel &
   setMantisBTSearchInput: Dispatch<SetStateAction<string>>
   activeMantisBTPreset: MantisBTIssueFilter
   setActiveMantisBTPreset: Dispatch<SetStateAction<MantisBTIssueFilter>>
+  // Why: composite key, not a bare numeric id — 'all' (no filter) or
+  // `${siteId}::${projectId}`, since MantisBT project ids are only unique
+  // per-site (see mantisbt-project-queries.ts's projectDedupeKey).
+  selectedMantisBTProjectId: string
+  setSelectedMantisBTProjectId: Dispatch<SetStateAction<string>>
   mantisBTRefreshNonce: number
   setMantisBTRefreshNonce: Dispatch<SetStateAction<number>>
   mantisBTOrderBy: MantisBTIssueSortColumn
@@ -36,6 +41,7 @@ export function useTaskPageMantisBTListState(
   const [mantisBTErrorDetailsOpen, setMantisBTErrorDetailsOpen] = useState(false)
   const [mantisBTSearchInput, setMantisBTSearchInput] = useState('')
   const [activeMantisBTPreset, setActiveMantisBTPreset] = useState<MantisBTIssueFilter>('assigned')
+  const [selectedMantisBTProjectId, setSelectedMantisBTProjectId] = useState('all')
   const [mantisBTRefreshNonce, setMantisBTRefreshNonce] = useState(0)
   const [mantisBTOrderBy, setMantisBTOrderBy] = useState<MantisBTIssueSortColumn>('updated')
   const [mantisBTOrderDirection, setMantisBTOrderDirection] =
@@ -65,6 +71,8 @@ export function useTaskPageMantisBTListState(
     setMantisBTSearchInput,
     activeMantisBTPreset,
     setActiveMantisBTPreset,
+    selectedMantisBTProjectId,
+    setSelectedMantisBTProjectId,
     mantisBTRefreshNonce,
     setMantisBTRefreshNonce,
     mantisBTOrderBy,
