@@ -259,7 +259,7 @@ describe('MantisBT client credential storage', () => {
 
     await expect(
       mantisBT.connect({ siteUrl: 'mantisbt.example.com', apiToken: 'bad-token' })
-    ).resolves.toEqual({ ok: false, error: 'Access denied' })
+    ).resolves.toEqual({ ok: false, error: 'Error 401: Access denied' })
 
     expect(netFetchMock).toHaveBeenCalledTimes(4)
     expect(fetchMock).not.toHaveBeenCalled()

@@ -1,4 +1,5 @@
 import { mantisBTRequest, type MantisBTClientForSite } from './authenticated-request'
+import { acquire, release } from './request-queue'
 
 export type MantisBTRecord = Record<string, unknown>
 
@@ -42,6 +43,8 @@ async function fetchIssuePage(
   signal: AbortSignal | undefined
 ): Promise<MantisBTIssuesResponse> {
   for (let attempt = 1; ; attempt += 1) {
+    // Why: a slot per page, not per scan, so a minutes-long scan can't starve other MantisBT calls.
+    await acquire(signal)
     try {
       return await mantisBTRequest<MantisBTIssuesResponse>(entry, path, { signal })
     } catch (error) {
@@ -49,10 +52,12 @@ async function fetchIssuePage(
       if (!retryable || attempt >= MAX_PAGE_FETCH_ATTEMPTS) {
         throw error
       }
-      const { promise, resolve } = Promise.withResolvers<void>()
-      setTimeout(resolve, PAGE_RETRY_DELAY_MS)
-      await promise
+    } finally {
+      release()
     }
+    const { promise, resolve } = Promise.withResolvers<void>()
+    setTimeout(resolve, PAGE_RETRY_DELAY_MS)
+    await promise
   }
 }
 

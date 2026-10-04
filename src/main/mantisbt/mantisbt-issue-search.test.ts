@@ -308,6 +308,48 @@ describe('MantisBT listIssues', () => {
     expect(netFetchMock).toHaveBeenCalledTimes(2)
   })
 
+  it('lets a queued request run between pages of in-flight scans', async () => {
+    writeMantisBTSites([
+      { id: 'site-a', siteUrl: 'https://mantisbt.example.com', userId: '42', token: 'token-a' }
+    ])
+    const fullPage = Array.from({ length: 50 }, (_, index) =>
+      makeIssueRecord(index + 1, null, '2024-01-01T00:00:00.000Z')
+    )
+    const pendingFirstPages: ((response: Response) => void)[] = []
+    netFetchMock.mockImplementation((url: string) => {
+      if (url.includes('page=1')) {
+        const { promise, resolve } = Promise.withResolvers<Response>()
+        pendingFirstPages.push(resolve)
+        return promise
+      }
+      if (url.includes('page=2')) {
+        return Promise.resolve(jsonResponse({ issues: [] }))
+      }
+      return Promise.resolve(jsonResponse({ id: 42, name: 'viewer' }))
+    })
+    const mantisBT = await loadSearchModule()
+
+    // Four scans fill every queue slot.
+    const scans = ['1', '2', '3', '4'].map((projectId) =>
+      mantisBT.listIssues('all', 100, 'site-a', projectId)
+    )
+    await vi.waitFor(() => expect(pendingFirstPages).toHaveLength(4))
+    const probe = mantisBT.testConnection('site-a')
+    pendingFirstPages[0]?.(jsonResponse({ issues: fullPage }))
+    await probe
+
+    const urls = netFetchMock.mock.calls.map(([url]) => String(url))
+    const probeIndex = urls.findIndex((url) => url.includes('/users/me'))
+    const nextPageIndex = urls.findIndex((url) => url.includes('page=2'))
+    expect(probeIndex).toBeGreaterThan(-1)
+    expect(nextPageIndex === -1 || probeIndex < nextPageIndex).toBe(true)
+
+    for (const resolve of pendingFirstPages.slice(1)) {
+      resolve(jsonResponse({ issues: [] }))
+    }
+    await Promise.all(scans)
+  })
+
   it('reports cumulative filtered issues to onProgress as each page arrives', async () => {
     writeMantisBTSites([
       { id: 'site-a', siteUrl: 'https://mantisbt.example.com', userId: '42', token: 'token-a' }

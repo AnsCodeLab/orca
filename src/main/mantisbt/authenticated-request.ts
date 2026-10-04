@@ -165,17 +165,19 @@ export async function probeMantisBTConnection(
   throw lastError
 }
 
+// Why: the status prefix is the only part of the error that survives IPC/RPC; the renderer parses it.
 async function readMantisBTError(response: Response): Promise<string> {
+  let detail = response.statusText || 'MantisBT request failed'
   try {
     // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: response.json() returns `any`; `data.message` is read with a truthy check before use.
     const data = (await response.json()) as { message?: string }
     if (data.message) {
-      return data.message
+      detail = data.message
     }
   } catch {
     // Fall through to status text.
   }
-  return response.statusText || `MantisBT request failed (${response.status})`
+  return `Error ${response.status}: ${detail}`
 }
 
 export async function mantisBTRequest<T>(

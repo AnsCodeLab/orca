@@ -24,9 +24,9 @@ import type { MantisBTReadFailure } from './mantisbt-read-failure'
 // large self-hosted instance's per-page latency can climb with page depth: a
 // live server with 1000+ issues measured page 1 at ~2.8s growing to ~11s by
 // page 20, extrapolating to several minutes for the full unscoped listing.
-// The request is cancelable (preset/site switch or navigating away aborts
-// and is ignored by the renderer), so a generous ceiling here trades a long
-// wait for a real server response instead of a premature failure.
+// The renderer ignores an abandoned result, and each page holds a queue slot
+// only for its own request (see fetchIssuePage), so a generous ceiling here
+// trades a long wait for a real server response instead of a premature failure.
 const ISSUE_SEARCH_TIMEOUT_MS = 300_000
 
 function clampLimit(limit: number | undefined, fallback = 30): number {
@@ -57,23 +57,25 @@ export async function listIssues(
   const results = await withMantisBTDeadline(signal, ISSUE_SEARCH_TIMEOUT_MS, (requestSignal) =>
     Promise.all(
       entries.map(async (entry, index): Promise<MantisBTIssue[]> => {
-        await acquire(requestSignal)
         try {
           // MantisBT's REST API has no server-side handler_id/reporter_id filter, so
           // 'assigned'/'reported' resolve the viewer's numeric id once per site here
           // and filter the fetched page client-side below.
-          const viewerId =
-            filter === 'all'
-              ? null
-              : toViewer(
-                  await mantisBTRequest(
-                    entry,
-                    `${apiBasePath(entry.site.usePhpIndexPath)}/users/me`,
-                    {
-                      signal: requestSignal
-                    }
-                  )
-                ).id
+          let viewerId: string | null = null
+          if (filter !== 'all') {
+            await acquire(requestSignal)
+            try {
+              viewerId = toViewer(
+                await mantisBTRequest(
+                  entry,
+                  `${apiBasePath(entry.site.usePhpIndexPath)}/users/me`,
+                  { signal: requestSignal }
+                )
+              ).id
+            } finally {
+              release()
+            }
+          }
           const filterByViewer = (issues: MantisBTIssue[]): MantisBTIssue[] => {
             if (filter === 'assigned') {
               return issues.filter((issue) => issue.handler?.id === viewerId)
@@ -124,8 +126,6 @@ export async function listIssues(
           console.warn('[mantisBT] listIssues failed:', error)
           failures[index] = { error, auth: authFailure }
           return []
-        } finally {
-          release()
         }
       })
     )

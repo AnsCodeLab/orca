@@ -13,6 +13,7 @@ import {
   type TaskSourceContext
 } from '../../../../shared/task-source-context'
 import { getProviderRuntimeContextKey } from '@/lib/provider-runtime-context'
+import { parseHttpStatusError } from '../../../../shared/http-status-error'
 
 const CACHE_TTL = 60_000
 const MAX_CACHE_ENTRIES = 500
@@ -72,6 +73,11 @@ export function evictStaleMantisBTCacheEntries<T>(
 
 export function looksLikeMantisBTAuthError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error)
+  const status = parseHttpStatusError(message)
+  if (status) {
+    // MantisBT 403 is a project/endpoint permission denial; the token is still valid.
+    return status.code === 401
+  }
   return /authenticat|unauthorized|401/i.test(message)
 }
 

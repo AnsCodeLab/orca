@@ -9,13 +9,18 @@ describe('TaskPage MantisBT load state', () => {
     })
   })
 
-  it('explains MantisBT authentication errors', () => {
+  it('reads the status main attaches through the IPC error wrapper', () => {
     expect(
-      createTaskPageMantisBTLoadFailureState(new Error('Error 401: Unauthorized'), false)
+      createTaskPageMantisBTLoadFailureState(
+        new Error(
+          "Error invoking remote method 'mantisBT:listIssues': Error: Error 401: Access denied"
+        ),
+        false
+      )
     ).toEqual({
       title:
         'Error 401: MantisBT authentication failed. Reconnect MantisBT in Settings, then try again.',
-      details: 'Unauthorized'
+      details: 'Access denied'
     })
   })
 

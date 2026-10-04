@@ -1,3 +1,5 @@
+import { parseHttpStatusError } from '../../../shared/http-status-error'
+
 export type TaskPageMantisBTLoadError = {
   title: string
   details: string | null
@@ -7,11 +9,7 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Failed to load MantisBT issues.'
 }
 
-function getErrorCode(message: string): number | null {
-  const explicit = /^Error\s+(\d{3})\b/i.exec(message)?.[1]
-  if (explicit) {
-    return Number(explicit)
-  }
+function inferErrorCode(message: string): number | null {
   if (/\bforbidden\b/i.test(message)) {
     return 403
   }
@@ -25,12 +23,6 @@ function getErrorCode(message: string): number | null {
     return 503
   }
   return null
-}
-
-function getErrorDetails(message: string, code: number | null): string | null {
-  const normalized =
-    code === null ? message : message.replace(new RegExp(`^Error\\s+${code}:\\s*`, 'i'), '')
-  return normalized.trim() || null
 }
 
 function getIssueSearchErrorSummary(message: string, code: number | null): string {
@@ -62,11 +54,12 @@ export function createTaskPageMantisBTLoadFailureState(
   hasPartialResults: boolean
 ): TaskPageMantisBTLoadError {
   const message = getErrorMessage(error)
-  const code = getErrorCode(message)
+  const status = parseHttpStatusError(message)
+  const code = status?.code ?? inferErrorCode(message)
   const summary = getIssueSearchErrorSummary(message, code)
   const title = code === null ? summary : `Error ${code}: ${summary}`
   return {
     title: hasPartialResults ? `Showing partial results. ${title}` : title,
-    details: getErrorDetails(message, code)
+    details: (status?.details ?? message).trim() || null
   }
 }
