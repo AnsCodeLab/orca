@@ -78,6 +78,7 @@ export function looksLikeMantisBTAuthError(error: unknown): boolean {
 export function clearMantisBTInflightRequests(): void {
   inflightMantisBTIssueRequests.clear()
   inflightMantisBTListRequests.clear()
+  inflightMantisBTProjectRequests.clear()
 }
 
 let mantisBTStatusReadGeneration = 0

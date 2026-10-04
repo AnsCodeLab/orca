@@ -1,11 +1,12 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { getSecretStore } from '../../shared/secret-store'
 import {
   CredentialDecryptionError,
   credentialFileHasContent,
-  readStoredCredentialToken
+  readStoredCredentialToken,
+  writeCredentialFileAtomic,
+  writeEncryptedCredential
 } from '../integration-credential-file'
 import type { MantisBTSite, MantisBTSiteSelection } from '../../shared/mantisbt-types'
 
@@ -125,32 +126,37 @@ function readSiteFileFromDisk(): MantisBTSiteFile {
   if (!existsSync(path)) {
     return emptySiteFile()
   }
+  // Why: read errors (EACCES, EIO) propagate — caching them as an empty file would
+  // let the next connect overwrite every saved site.
+  const raw = readFileSync(path, { encoding: 'utf-8' })
+  let parsed: Partial<MantisBTSiteFile>
   try {
     // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: JSON.parse returns `any`; every field is defensively validated (Array.isArray/typeof) below before use, and normalizeSite re-validates each site entry independently.
-    const parsed = JSON.parse(
-      readFileSync(path, { encoding: 'utf-8' })
-    ) as Partial<MantisBTSiteFile>
-    const sites = Array.isArray(parsed.sites)
-      ? parsed.sites
-          .map((site) => normalizeSite(site))
-          .filter((site): site is MantisBTSite => site !== null)
-          .filter((site) => hasStoredToken(site.id))
-      : []
-    const activeSiteId =
-      typeof parsed.activeSiteId === 'string' &&
-      sites.some((site) => site.id === parsed.activeSiteId)
-        ? parsed.activeSiteId
-        : (sites[0]?.id ?? null)
-    const selectedSiteId =
-      parsed.selectedSiteId === 'all' ||
-      (typeof parsed.selectedSiteId === 'string' &&
-        sites.some((site) => site.id === parsed.selectedSiteId))
-        ? parsed.selectedSiteId
-        : activeSiteId
-    return { version: 1, activeSiteId, selectedSiteId, sites }
+    parsed = JSON.parse(raw) as Partial<MantisBTSiteFile>
   } catch {
+    // Why: keep the unreadable file for recovery instead of overwriting it on the next write.
+    const backupPath = `${path}.corrupt-${Date.now()}`
+    renameSync(path, backupPath)
+    console.warn(`[mantisBT] unparseable site file moved to ${backupPath}`)
     return emptySiteFile()
   }
+  const sites = Array.isArray(parsed.sites)
+    ? parsed.sites
+        .map((site) => normalizeSite(site))
+        .filter((site): site is MantisBTSite => site !== null)
+        .filter((site) => hasStoredToken(site.id))
+    : []
+  const activeSiteId =
+    typeof parsed.activeSiteId === 'string' && sites.some((site) => site.id === parsed.activeSiteId)
+      ? parsed.activeSiteId
+      : (sites[0]?.id ?? null)
+  const selectedSiteId =
+    parsed.selectedSiteId === 'all' ||
+    (typeof parsed.selectedSiteId === 'string' &&
+      sites.some((site) => site.id === parsed.selectedSiteId))
+      ? parsed.selectedSiteId
+      : activeSiteId
+  return { version: 1, activeSiteId, selectedSiteId, sites }
 }
 
 export function getSiteFile(): MantisBTSiteFile {
@@ -175,26 +181,10 @@ export function writeSiteFile(file: MantisBTSiteFile): void {
         ? file.selectedSiteId
         : activeSiteId
 
-  cachedSiteFile = {
-    version: 1,
-    activeSiteId,
-    selectedSiteId,
-    sites
-  }
+  const next: MantisBTSiteFile = { version: 1, activeSiteId, selectedSiteId, sites }
+  writeCredentialFileAtomic(getSiteFilePath(), Buffer.from(JSON.stringify(next, null, 2), 'utf-8'))
+  cachedSiteFile = next
   siteFileLoaded = true
-  writeFileSync(getSiteFilePath(), JSON.stringify(cachedSiteFile, null, 2), {
-    encoding: 'utf-8',
-    mode: 0o600
-  })
-}
-
-function writeEncryptedToken(path: string, apiToken: string): void {
-  if (getSecretStore().isEncryptionAvailable()) {
-    writeFileSync(path, getSecretStore().encryptString(apiToken), { mode: 0o600 })
-    return
-  }
-  console.warn('[mantisBT] secret encryption unavailable — storing token in plaintext')
-  writeFileSync(path, apiToken, { encoding: 'utf-8', mode: 0o600 })
 }
 
 export function readToken(siteId: string): string | null {
@@ -223,10 +213,31 @@ export function readToken(siteId: string): string | null {
   }
 }
 
-export function saveToken(siteId: string, apiToken: string): void {
+// Why: token and site metadata commit together — a failed metadata write restores
+// the previous token bytes so stored auth never diverges from the negotiated site.
+export function saveSiteConnection(siteId: string, apiToken: string, file: MantisBTSiteFile): void {
   ensureOrcaDir()
   ensureTokenDir()
-  writeEncryptedToken(getTokenPath(siteId), apiToken)
+  const tokenPath = getTokenPath(siteId)
+  const previousToken = existsSync(tokenPath) ? readFileSync(tokenPath) : null
+  writeEncryptedCredential('MantisBT', tokenPath, apiToken)
+  try {
+    writeSiteFile(file)
+  } catch (error) {
+    try {
+      if (previousToken) {
+        writeCredentialFileAtomic(tokenPath, previousToken)
+      } else {
+        unlinkSync(tokenPath)
+      }
+    } catch (rollbackError) {
+      console.warn(
+        '[mantisBT] failed to roll back token after site-file write error',
+        rollbackError
+      )
+    }
+    throw error
+  }
   cachedTokens.set(siteId, apiToken)
   credentialErrors.delete(siteId)
 }

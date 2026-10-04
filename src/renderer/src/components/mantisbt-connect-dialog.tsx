@@ -135,7 +135,7 @@ export function MantisBTConnectDialog({
           <DialogDescription>
             {translate(
               'auto.components.mantisbt.connect.dialog.description',
-              'Use a self-hosted MantisBT base URL and an API token to browse issues.'
+              'Use a MantisBT base URL and an API token to browse issues.'
             )}
           </DialogDescription>
         </DialogHeader>

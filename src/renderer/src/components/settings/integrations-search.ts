@@ -229,7 +229,7 @@ export const getIntegrationsPaneSearchEntries = createLocalizedCatalog(() => [
     ),
     description: translate(
       'auto.components.settings.integrations.search.mantisbt02',
-      'Connect a self-hosted MantisBT instance with an API token.'
+      'Connect a MantisBT instance with an API token.'
     ),
     keywords: [
       ...translateSearchKeyword(

@@ -16,6 +16,7 @@ describe('normalizeMantisBTSiteUrl', () => {
   it('allows http:// only for loopback hosts', () => {
     expect(normalizeMantisBTSiteUrl('http://localhost:8080')).toBe('http://localhost:8080')
     expect(normalizeMantisBTSiteUrl('http://127.0.0.1:8080')).toBe('http://127.0.0.1:8080')
+    expect(normalizeMantisBTSiteUrl('http://[::1]:8080')).toBe('http://[::1]:8080')
   })
 })
 

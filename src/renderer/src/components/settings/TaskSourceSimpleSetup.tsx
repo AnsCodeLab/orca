@@ -142,7 +142,7 @@ export function MantisBTSetupSteps(
           )}
           description={translate(
             'auto.components.settings.TasksPane.connectMantisBTDescription',
-            'Add a self-hosted MantisBT instance with an API token.'
+            'Add a MantisBT instance with an API token.'
           )}
           action={
             <Button

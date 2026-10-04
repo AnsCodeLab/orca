@@ -2,7 +2,12 @@ import { createHash } from 'node:crypto'
 import type { MantisBTSite, MantisBTViewer } from '../../shared/mantisbt-types'
 import { asRecord } from './mantisbt-record-pages'
 
-const LOOPBACK_HOSTNAMES: Record<string, true> = { localhost: true, '127.0.0.1': true, '::1': true }
+// Why '[::1]': WHATWG URL keeps the brackets in `hostname` for IPv6 literals.
+const LOOPBACK_HOSTNAMES: Record<string, true> = {
+  localhost: true,
+  '127.0.0.1': true,
+  '[::1]': true
+}
 
 export function normalizeMantisBTSiteUrl(siteUrl: string): string {
   const trimmed = siteUrl.trim()

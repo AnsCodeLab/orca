@@ -47,12 +47,19 @@ export function useTaskPageMantisBTDetailRouting(
       searchCache: s.mantisBTSearchCache
     }))
   )
+  // Why: an open issue keeps the source it was opened from; looking it up in the
+  // current source could swap in a same-site-id issue from another runtime.
+  const persistedDetailSourceContext =
+    pageData.openMantisBTSourceContext?.provider === 'mantisBT' &&
+    pageData.openMantisBTIssue?.id === selectedMantisBTIssueKey
+      ? pageData.openMantisBTSourceContext
+      : null
   const cachedSelectedMantisBTIssue = findTaskPageMantisBTIssue(
     mantisBTCacheSnapshot.issueCache,
     mantisBTCacheSnapshot.searchCache,
     selectedMantisBTIssueKey,
     {
-      sourceContext: mantisBTTaskSourceContext,
+      sourceContext: persistedDetailSourceContext ?? mantisBTTaskSourceContext,
       siteId: selectedMantisBTIssueFallback?.siteId ?? pageData.openMantisBTIssue?.siteId ?? null
     }
   )

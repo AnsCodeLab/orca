@@ -27,16 +27,16 @@ export default function MantisBTIssueWorkspace({
   sourceContext
 }: MantisBTIssueWorkspaceProps): React.JSX.Element {
   const providerSettings = sourceContext
-  const [fetchedIssue, setFetchedIssue] = useState<{ id: string; issue: MantisBTIssue } | null>(
-    null
-  )
+  const [fetchedIssue, setFetchedIssue] = useState<MantisBTIssue | null>(null)
   const [issueLoading, setIssueLoading] = useState(false)
   const requestIdRef = useRef(0)
 
-  // Why: the freshly fetched issue is only usable while it still matches the
-  // selected issue's id — derived directly from state rather than synced via
-  // an effect, so switching issues never flashes stale fetched content.
-  const displayed = issue && fetchedIssue?.id === issue.id ? fetchedIssue.issue : issue
+  // Why: ids are only unique per site, so a fetched issue is usable only while
+  // both id and site still match — derived, so switching never flashes stale content.
+  const displayed =
+    issue && fetchedIssue?.id === issue.id && fetchedIssue.siteId === issue.siteId
+      ? fetchedIssue
+      : issue
 
   useEffect(() => {
     if (!issue) {
@@ -52,7 +52,7 @@ export default function MantisBTIssueWorkspace({
           return
         }
         if (result) {
-          setFetchedIssue({ id: issue.id, issue: result })
+          setFetchedIssue(result)
         }
       })
       .catch(() => {})

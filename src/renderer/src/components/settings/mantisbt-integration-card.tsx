@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { AlertCircle, CheckCircle2, LoaderCircle, Unlink } from 'lucide-react'
 import { MantisBTConnectDialog } from '@/components/mantisbt-connect-dialog'
 import { MantisBTIcon } from '@/components/icons/MantisBTIcon'
@@ -41,17 +42,28 @@ export function MantisBTIntegrationCard(): React.JSX.Element {
   const credentialCopy = hasRemoteProviderRuntime(settings)
     ? translate(
         'auto.components.settings.task.tracker.integration.cards.mantisbtRemoteCredentialCopy',
-        'Connect a self-hosted MantisBT instance with an API token. Credentials are sent to the selected remote runtime and stored there with runtime-supported encryption.'
+        'Connect a MantisBT instance with an API token. Credentials are sent to the selected remote runtime and stored there with runtime-supported encryption.'
       )
     : translate(
         'auto.components.settings.task.tracker.integration.cards.mantisbtLocalCredentialCopy',
-        'Connect a self-hosted MantisBT instance with an API token. Credentials are stored locally and encrypted when local runtime storage supports it.'
+        'Connect a MantisBT instance with an API token. Credentials are stored locally and encrypted when local runtime storage supports it.'
       )
   const subordinateRowClass = useIntegrationSubordinateRowClass('flex items-center gap-3')
   const accountScopeRowClass = useIntegrationSubordinateRowClass('text-xs')
 
   const handleDisconnect = async (siteId?: string): Promise<void> => {
-    await disconnectMantisBT(siteId)
+    try {
+      await disconnectMantisBT(siteId)
+    } catch {
+      toast.error(
+        translate(
+          'auto.components.settings.task.tracker.integration.cards.mantisbtDisconnectFailed',
+          'Failed to remove the MantisBT credentials. Try disconnecting again.'
+        )
+      )
+      // Why: main may have removed some sites before failing; resync the visible list.
+      void useAppStore.getState().checkMantisBTConnection()
+    }
     if (mountedRef.current) {
       setTestResultBySite({})
     }

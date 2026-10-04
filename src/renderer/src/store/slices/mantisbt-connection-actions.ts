@@ -11,6 +11,7 @@ import type { MantisBTSlice, MantisBTSliceGet, MantisBTSliceSet } from './mantis
 import type { MantisBTConnectionStatus } from '../../../../shared/mantisbt-types'
 import {
   beginMantisBTMutation,
+  clearMantisBTInflightRequests,
   currentMantisBTMutationGeneration,
   getSelectedMantisBTSiteId,
   isCurrentMantisBTMutation,
@@ -46,7 +47,8 @@ function hasMantisBTStatusChanged(
     previous.credentialError !== next.credentialError ||
     previous.viewer?.email !== next.viewer?.email ||
     getSelectedMantisBTSiteId(previous) !== getSelectedMantisBTSiteId(next) ||
-    (previous.sites?.length ?? 0) !== (next.sites?.length ?? 0)
+    (previous.sites ?? []).map((site) => site.id).join('\n') !==
+      (next.sites ?? []).map((site) => site.id).join('\n')
   )
 }
 
@@ -72,12 +74,14 @@ export function createMantisBTConnectionActions(
           return
         }
         const previous = get().mantisBTStatus
-        if (hasMantisBTStatusChanged(previous, status)) {
+        // Why: a new runtime context can report an equal-looking status for different sites.
+        if (
+          get().mantisBTStatusContextKey !== contextKey ||
+          hasMantisBTStatusChanged(previous, status)
+        ) {
           set((state) => mantisBTStatusUpdate(state, contextKey, status))
         } else if (!get().mantisBTStatusChecked) {
-          set({ mantisBTStatusChecked: true, mantisBTStatusContextKey: contextKey })
-        } else if (get().mantisBTStatusContextKey !== contextKey) {
-          set({ mantisBTStatusContextKey: contextKey })
+          set({ mantisBTStatusChecked: true })
         }
       } catch {
         if (
@@ -167,6 +171,7 @@ export function createMantisBTConnectionActions(
       ) {
         return
       }
+      clearMantisBTInflightRequests()
       set((state) => mantisBTStatusUpdate(state, contextKey, status))
     },
 
@@ -180,6 +185,7 @@ export function createMantisBTConnectionActions(
       ) {
         return
       }
+      clearMantisBTInflightRequests()
       const status = await mantisBTStatus(get().settings)
       if (
         !isCurrentMantisBTMutation(requestGeneration) ||

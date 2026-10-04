@@ -47,7 +47,14 @@ export function isWorkspaceLinkedItemSourceContextMatch(
       return false
     }
     try {
-      return new URL(item.url).origin === new URL(identity.siteUrl).origin
+      const itemUrl = new URL(item.url)
+      const siteUrl = new URL(identity.siteUrl)
+      // Why: issue ids are per-installation, and installs often share an origin under sub-paths.
+      const sitePath = siteUrl.pathname.replace(/\/+$/g, '')
+      return (
+        itemUrl.origin === siteUrl.origin &&
+        (sitePath === '' || itemUrl.pathname.startsWith(`${sitePath}/`))
+      )
     } catch {
       return false
     }

@@ -99,7 +99,7 @@ const PROVIDER_META: Record<
     get description() {
       return translate(
         'auto.components.settings.TasksPane.mantisBTDescription',
-        'Connect a self-hosted MantisBT instance and show it in Tasks.'
+        'Connect a MantisBT instance and show it in Tasks.'
       )
     },
     Icon: ({ className }) => <MantisBTIcon className={className} />

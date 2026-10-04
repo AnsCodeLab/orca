@@ -98,6 +98,23 @@ describe('workspace linked-item source context', () => {
     ).toBe(false)
   })
 
+  it('separates MantisBT installs that share an origin under different sub-paths', () => {
+    const contextAt = (siteUrl: string): TaskSourceContext => ({
+      ...MANTISBT_CONTEXT,
+      providerIdentity: { ...MANTISBT_CONTEXT.providerIdentity!, provider: 'mantisBT', siteUrl }
+    })
+    const itemB = { ...MANTISBT_ITEM, url: 'https://host.example.com/mantis-b/view.php?id=123' }
+    expect(
+      isWorkspaceLinkedItemSourceContextMatch(itemB, contextAt('https://host.example.com/mantis-b'))
+    ).toBe(true)
+    expect(
+      isWorkspaceLinkedItemSourceContextMatch(itemB, contextAt('https://host.example.com/mantis-a'))
+    ).toBe(false)
+    expect(
+      isWorkspaceLinkedItemSourceContextMatch(itemB, contextAt('https://host.example.com/mantis'))
+    ).toBe(false)
+  })
+
   it('keeps provider matching sufficient for non-Jira items', () => {
     expect(
       isWorkspaceLinkedItemSourceContextMatch(

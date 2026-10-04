@@ -2,6 +2,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   unlinkSync,
   writeFileSync
@@ -211,6 +212,30 @@ describe('MantisBT client credential storage', () => {
     expect(storedSiteId).toBeTruthy()
     // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: guarded by the `toBeTruthy()` assertion on the previous line.
     expect(existsSync(tokenPathForSite(storedSiteId as string))).toBe(true)
+  })
+
+  it('moves an unparseable site file aside instead of overwriting it on connect', async () => {
+    const orcaDir = join(tempHome, '.orca')
+    mkdirSync(orcaDir, { recursive: true })
+    writeFileSync(join(orcaDir, 'mantisBT-sites.json'), '{"sites": [trunc', 'utf-8')
+    netFetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ id: 42, name: 'wquintal' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    )
+    const mantisBT = await loadClientModule()
+
+    await expect(
+      mantisBT.connect({ siteUrl: 'mantisbt.example.com', apiToken: 'token-alpha' })
+    ).resolves.toMatchObject({ ok: true })
+
+    const backups = readdirSync(orcaDir).filter((name) =>
+      name.startsWith('mantisBT-sites.json.corrupt-')
+    )
+    expect(backups).toHaveLength(1)
+    expect(readFileSync(join(orcaDir, backups[0]!), 'utf-8')).toBe('{"sites": [trunc')
+    expect(mantisBT.getStatus().sites).toHaveLength(1)
   })
 
   it('reports a connection failure for an invalid token', async () => {

@@ -30,6 +30,8 @@ export function useTaskPageMantisBTProjectList(
       return
     }
     let cancelled = false
+    // Why: a failed fetch for a new site must not keep the previous site's projects selectable.
+    setMantisBTProjects([])
     setMantisBTProjectsLoading(true)
     void listMantisBTProjects({ sourceContext: mantisBTTaskSourceContext })
       .then((projects) => {

@@ -109,9 +109,15 @@ export function useTaskPageMantisBTListEffects(
       }
       return
     }
+    // Why: ids are only unique per site; an all-sites list can hold a same-id issue elsewhere.
+    const selectedSiteId = selectedMantisBTIssueFallback?.siteId
     if (
       selectedMantisBTIssueKey &&
-      !fetchedMantisBTIssues.some((issue) => issue.id === selectedMantisBTIssueKey)
+      !fetchedMantisBTIssues.some(
+        (issue) =>
+          issue.id === selectedMantisBTIssueKey &&
+          (!selectedSiteId || issue.siteId === selectedSiteId)
+      )
     ) {
       setSelectedMantisBTIssueKey(null)
       setSelectedMantisBTIssueFallback(null)

@@ -13,7 +13,7 @@ import {
   getSiteFile,
   hasStoredToken,
   readToken,
-  saveToken,
+  saveSiteConnection,
   writeSiteFile
 } from './site-credential-store'
 import {
@@ -101,9 +101,8 @@ export async function connect(
       authScheme: probe.authScheme,
       usePhpIndexPath: probe.usePhpIndexPath
     }
-    saveToken(id, apiToken)
     const file = getSiteFile()
-    writeSiteFile({
+    saveSiteConnection(id, apiToken, {
       version: 1,
       activeSiteId: id,
       selectedSiteId: id,

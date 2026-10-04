@@ -242,20 +242,24 @@ export function TaskPageSourceBar({
             <Select
               value={selectedMantisBTSiteId ?? undefined}
               onValueChange={(value) => {
-                setSelectedMantisBTIssueKey(null)
-                setSelectedMantisBTIssueFallback(null)
-                setSelectedMantisBTProjectId('all')
-                setMantisBTIssues([])
-                setMantisBTError(null)
                 setMantisBTLoading(true)
-                void selectMantisBTSite(value).catch(() => {
-                  toast.error(
-                    translate(
-                      'auto.components.TaskPage.mantisbtSwitchSiteFailed',
-                      'Failed to switch MantisBT site.'
+                void selectMantisBTSite(value)
+                  .then(() => {
+                    setSelectedMantisBTIssueKey(null)
+                    setSelectedMantisBTIssueFallback(null)
+                    setSelectedMantisBTProjectId('all')
+                    setMantisBTIssues([])
+                    setMantisBTError(null)
+                  })
+                  .catch(() => {
+                    setMantisBTLoading(false)
+                    toast.error(
+                      translate(
+                        'auto.components.TaskPage.mantisbtSwitchSiteFailed',
+                        'Failed to switch MantisBT site.'
+                      )
                     )
-                  )
-                })
+                  })
               }}
             >
               <SelectTrigger className="h-8 w-[220px]">
