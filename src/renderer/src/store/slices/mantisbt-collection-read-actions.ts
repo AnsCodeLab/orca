@@ -16,7 +16,7 @@ import {
   markMantisBTConnectionLost,
   scopedMantisBTCacheKey,
   shouldRefreshMantisBTStatusAfterRead,
-  type InflightMantisBTReadRequest,
+  type InflightMantisBTListRequest,
   type MantisBTReadScope
 } from './mantisbt-read-coordination'
 
@@ -85,22 +85,36 @@ export function createMantisBTCollectionReadActions(
       }
       const inflight = inflightMantisBTListRequests.get(cacheKey)
       const requestMutationGeneration = currentMantisBTMutationGeneration()
+      const onProgress = options?.onProgress
       if (
         inflight &&
         inflight.contextKey === scope.contextKey &&
         inflight.mutationGeneration === requestMutationGeneration
       ) {
+        // Why: a joining caller (e.g. a remounted task page) still needs page snapshots.
+        if (onProgress) {
+          inflight.progressListeners.add(onProgress)
+          if (inflight.latestProgress) {
+            onProgress(inflight.latestProgress)
+          }
+        }
         return inflight.promise
       }
-      let entry: InflightMantisBTReadRequest<MantisBTIssue[]>
+      let entry: InflightMantisBTListRequest
+      const progressListeners = new Set<(issues: MantisBTIssue[]) => void>()
+      if (onProgress) {
+        progressListeners.add(onProgress)
+      }
       const target = getMantisBTRuntimeTarget(scope.settings)
-      const onProgress = options?.onProgress
-      const requestId =
-        target.kind !== 'environment' && onProgress ? createBrowserUuid() : undefined
+      // Always subscribe when progress is possible: a later caller may join with onProgress.
+      const requestId = target.kind !== 'environment' ? createBrowserUuid() : undefined
       const unsubscribeProgress = requestId
         ? window.api.mantisBT.onListIssuesProgress(({ requestId: rid, issues }) => {
             if (rid === requestId) {
-              onProgress?.(issues)
+              entry.latestProgress = issues
+              for (const listener of progressListeners) {
+                listener(issues)
+              }
             }
           })
         : undefined
@@ -152,7 +166,9 @@ export function createMantisBTCollectionReadActions(
       entry = {
         promise,
         contextKey: scope.contextKey,
-        mutationGeneration: requestMutationGeneration
+        mutationGeneration: requestMutationGeneration,
+        progressListeners,
+        latestProgress: null
       }
       inflightMantisBTListRequests.set(cacheKey, entry)
       return promise

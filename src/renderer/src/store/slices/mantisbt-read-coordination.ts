@@ -24,6 +24,11 @@ export type InflightMantisBTReadRequest<T> = {
   mutationGeneration: number
 }
 
+export type InflightMantisBTListRequest = InflightMantisBTReadRequest<MantisBTIssue[]> & {
+  progressListeners: Set<(issues: MantisBTIssue[]) => void>
+  latestProgress: MantisBTIssue[] | null
+}
+
 export type MantisBTReadScope = {
   settings: AppState['settings'] | TaskSourceContext | null
   contextKey: string
@@ -35,10 +40,7 @@ export const inflightMantisBTIssueRequests = new Map<
   string,
   InflightMantisBTReadRequest<MantisBTIssue | null>
 >()
-export const inflightMantisBTListRequests = new Map<
-  string,
-  InflightMantisBTReadRequest<MantisBTIssue[]>
->()
+export const inflightMantisBTListRequests = new Map<string, InflightMantisBTListRequest>()
 export const inflightMantisBTProjectRequests = new Map<
   string,
   InflightMantisBTReadRequest<MantisBTProject[]>
