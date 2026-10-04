@@ -5,6 +5,7 @@ import { translate } from '@/i18n/i18n'
 import { Button } from '@/components/ui/button'
 import { TaskPageJiraSortControls } from '../../task-page-jira-sort-controls'
 import { TaskPageJiraErrorBanner } from '../../task-page-linear-jira-list-model'
+import { TaskPageJiraTextFallbackNotice } from '../../task-page-jira-text-fallback-notice'
 import { TaskPageJiraIssueList } from '@/components/task-page-jira-issue-list'
 import { formatRelativeTime } from '../../task-page-source-context'
 import { getJiraStatusTone } from '@/components/task-page-jira-status-tone'
@@ -32,6 +33,7 @@ export function TaskPageJiraContent({
     jiraError,
     jiraErrorDetailsOpen,
     setJiraErrorDetailsOpen,
+    jiraJqlRejection,
     jiraSearchInput,
     jiraOrderBy,
     jiraOrderDirection,
@@ -103,6 +105,9 @@ export function TaskPageJiraContent({
               onOpenChange={setJiraErrorDetailsOpen}
             />
           ) : null}
+          <TaskPageJiraTextFallbackNotice
+            rejection={jiraStatus.credentialError ? null : jiraJqlRejection}
+          />
 
           {jiraLoading && jiraIssues.length === 0 ? (
             <div className="divide-y divide-border/50">
@@ -124,7 +129,10 @@ export function TaskPageJiraContent({
               </p>
               <p className="mt-2 text-sm text-muted-foreground">
                 {jiraSearchInput
-                  ? translate('auto.components.TaskPage.f51e254d35', 'Try a different JQL query.')
+                  ? translate(
+                      'auto.components.TaskPage.f51e254d35',
+                      'Try different search terms or JQL.'
+                    )
                   : translate(
                       'auto.components.TaskPage.94d900518d',
                       'No issues match the selected preset.'
