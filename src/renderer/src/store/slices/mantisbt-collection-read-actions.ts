@@ -1,5 +1,6 @@
 import { getMantisBTRuntimeTarget } from '@/runtime/runtime-mantisbt-target'
 import { mantisBTListIssues } from '@/runtime/runtime-mantisbt-client'
+import { createBrowserUuid } from '@/lib/browser-uuid'
 import { isIntegrationCredentialDecryptionError } from '../../../../shared/integration-credential-errors'
 import type { MantisBTIssue, MantisBTSiteSelection } from '../../../../shared/mantisbt-types'
 import type { MantisBTSlice, MantisBTSliceGet, MantisBTSliceSet } from './mantisbt-slice-contract'
@@ -95,7 +96,7 @@ export function createMantisBTCollectionReadActions(
       const target = getMantisBTRuntimeTarget(scope.settings)
       const onProgress = options?.onProgress
       const requestId =
-        target.kind !== 'environment' && onProgress ? crypto.randomUUID() : undefined
+        target.kind !== 'environment' && onProgress ? createBrowserUuid() : undefined
       const unsubscribeProgress = requestId
         ? window.api.mantisBT.onListIssuesProgress(({ requestId: rid, issues }) => {
             if (rid === requestId) {
