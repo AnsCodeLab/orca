@@ -131,8 +131,12 @@ function readSiteFileFromDisk(): MantisBTSiteFile {
   const raw = readFileSync(path, { encoding: 'utf-8' })
   let parsed: Partial<MantisBTSiteFile>
   try {
-    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: JSON.parse returns `any`; every field is defensively validated (Array.isArray/typeof) below before use, and normalizeSite re-validates each site entry independently.
-    parsed = JSON.parse(raw) as Partial<MantisBTSiteFile>
+    const value: unknown = JSON.parse(raw)
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      throw new Error('site file is not a JSON object')
+    }
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: checked to be a non-array object above; every field is re-validated (Array.isArray/typeof) below, and normalizeSite re-validates each site entry.
+    parsed = value as Partial<MantisBTSiteFile>
   } catch {
     // Why: keep the unreadable file for recovery instead of overwriting it on the next write.
     const backupPath = `${path}.corrupt-${Date.now()}`

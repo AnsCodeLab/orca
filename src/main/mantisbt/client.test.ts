@@ -214,10 +214,13 @@ describe('MantisBT client credential storage', () => {
     expect(existsSync(tokenPathForSite(storedSiteId as string))).toBe(true)
   })
 
-  it('moves an unparseable site file aside instead of overwriting it on connect', async () => {
+  it.each([
+    ['truncated JSON', '{"sites": [trunc'],
+    ['a non-object JSON value', 'null']
+  ])('moves a site file holding %s aside instead of overwriting it', async (_label, content) => {
     const orcaDir = join(tempHome, '.orca')
     mkdirSync(orcaDir, { recursive: true })
-    writeFileSync(join(orcaDir, 'mantisBT-sites.json'), '{"sites": [trunc', 'utf-8')
+    writeFileSync(join(orcaDir, 'mantisBT-sites.json'), content, 'utf-8')
     netFetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ id: 42, name: 'wquintal' }), {
         status: 200,
@@ -234,7 +237,7 @@ describe('MantisBT client credential storage', () => {
       name.startsWith('mantisBT-sites.json.corrupt-')
     )
     expect(backups).toHaveLength(1)
-    expect(readFileSync(join(orcaDir, backups[0]!), 'utf-8')).toBe('{"sites": [trunc')
+    expect(readFileSync(join(orcaDir, backups[0] ?? ''), 'utf-8')).toBe(content)
     expect(mantisBT.getStatus().sites).toHaveLength(1)
   })
 
